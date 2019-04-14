@@ -1,14 +1,31 @@
-#import everything
+# import everything
 import os, pygame, random, time
 from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
+# set up screen and data
 screen = Rect(0, 0, 1000, 750)
+class Data(object):
+    def __init__(self):
+        self.width = screen[2]
+        self.height = screen[3]
+        self.score = 0
+        
+        # game over info
+        self.gameOver = False
+        self.boxWidth, self.boxHeight = 200, 100
+        self.x1, self.y1 = self.width//2 - self.boxWidth, self.height//2 + self.boxHeight
+data = Data()
 
-#player class
+# draw game over screen
+def drawGameOver(screen):
+    boxRect = pygame.Rect(data.x1, data.y1, data.boxWidth, data.boxHeight)
+    pygame.draw.rect(screen, (0, 0, 0), boxRect)
+
+# player class
 class Kewpie(pygame.sprite.Sprite):
-    speed = [10, 5]
+    speed = [25, 5]
     bounce = 10
     images = []
     def __init__(self):
@@ -57,7 +74,7 @@ class Pastry(pygame.sprite.Sprite):
             
 # bullet class
 class Fork(pygame.sprite.Sprite):
-    speed = [0, -10]
+    speed = [0, -15]
     images = []
     def __init__(self, pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
@@ -151,6 +168,20 @@ def main():
                 allsprites.add(pastry)
                 screen.blit(pastry.image, (pastry.rect[0],pastry.rect[1]))
         
+        # detect collisions
+        # pastry / player collisions
+        for pastry in pygame.sprite.spritecollide(player, pastries, 1):
+            #data.score += 1
+            #player.kill()
+            data.gameOver = True
+        # pastry / fork collisions
+        for pastry in pygame.sprite.groupcollide(forks, pastries, 1, 1).keys():
+            #boom_sound.play()
+            #Explosion(alien)
+            data.score += 1
+            print(data.score)
+        
+        
         # update all sprites
         allsprites.update()
         
@@ -158,6 +189,10 @@ def main():
         screen.blit(background, (0, 0))
         allsprites.draw(screen)
         pygame.display.flip()
+        
+        # if game over
+        if data.gameOver:
+            drawGameOver(screen)
         
     pygame.quit()
 
