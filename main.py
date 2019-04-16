@@ -10,18 +10,16 @@ class Data(object):
     def __init__(self):
         self.width = screen[2]
         self.height = screen[3]
+        self.margin = [25, 25]
+        
+        # game state info
+        self.gameOver = False
         self.score = 0
         
-        # game over info
-        self.gameOver = False
-        self.boxWidth, self.boxHeight = 200, 100
-        self.x1, self.y1 = self.width//2 - self.boxWidth, self.height//2 + self.boxHeight
+        #self.boxWidth, self.boxHeight = 200, 100
+        #self.bx, self.by = self.width//2 - self.boxWidth, self.height//2 + self.boxHeight
+        
 data = Data()
-
-# draw game over screen
-def drawGameOver(screen):
-    boxRect = pygame.Rect(data.x1, data.y1, data.boxWidth, data.boxHeight)
-    pygame.draw.rect(screen, (0, 0, 0), boxRect)
 
 # player class
 class Kewpie(pygame.sprite.Sprite):
@@ -34,6 +32,7 @@ class Kewpie(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(midbottom = screen.midbottom)
         self.origtop = self.rect.top
         self.facing = -1
+        self.forkOffset = -5
     
     # move Kewpie based on input direction (left or right)
     def move(self, direction):
@@ -47,6 +46,11 @@ class Kewpie(pygame.sprite.Sprite):
         elif direction > 0:
             self.image = self.images[1]
         self.rect.top = self.origtop - (self.rect.left//self.bounce%2)
+    
+    # controls where the fork originates
+    def forkPos(self):
+        pos = (self.facing * self.forkOffset) + self.rect.centerx
+        return pos, self.rect.centery
             
 #obstacle class
 class Pastry(pygame.sprite.Sprite):
@@ -79,12 +83,46 @@ class Fork(pygame.sprite.Sprite):
     def __init__(self, pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = self.images[0]
-        self.rect = self.image.get_rect(midbottom = screen.midbottom)
+        self.rect = self.image.get_rect(midbottom = pos)
 
     def update(self):
         self.rect.move_ip(self.speed[0], self.speed[1])
         if self.rect.bottom <= 0:
             self.kill()
+
+# score class
+class Score(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.font = pygame.font.Font(None, 36)
+        #self.font = pygame.font.SysFont("maagkrampttf", 36)
+        self.color = Color('white')
+        self.lastscore = -1
+        self.size = self.font.size("Treats Consumed: 100")
+        self.x = data.width - self.size[0] - data.margin[0]
+        self.y = data.width//20
+        
+        self.update()
+        self.rect = self.image.get_rect().move(self.x, self.y)
+
+    def update(self):
+        if data.score != self.lastscore:
+            self.lastscore = data.score
+            msg = "Treats Consumed: %d" % data.score
+            self.image = self.font.render(msg, 1, self.color)
+
+# draw game over screen
+class GameOver(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self, self.containers)
+        self.width, self.height = 300, 100
+        self.x = data.width//2 - self.width
+        self.y = data.height//2 - self.height
+        self.rect = Rect(self.x, self.y, self.width, self.height)
+        self.color = Color(white)
+    def update(self):
+        if data.gameOver:
+            pygame.draw.rect(screen, self.color, self.rect, width=0)
 
 # helper functions to load images
 def load_image(name):
@@ -96,6 +134,7 @@ def load_images(*files):
         imgs.append(load_image(file))
     return imgs
 
+# main game function
 def main():
     pygame.init()
     screen = pygame.display.set_mode((1000, 750))
@@ -131,10 +170,16 @@ def main():
     Kewpie.containers = allsprites, players
     Pastry.containers = allsprites, pastries
     Fork.containers = allsprites, forks
+    Score.containers = allsprites
+    GameOver.containers = allsprites
     
     # create player
     player = Kewpie()
     
+    # create score
+    if pygame.font:
+        allsprites.add(Score())
+        
     # timer to create pastries every 200 ms
     pygame.time.set_timer(USEREVENT, 1000)
     
@@ -159,7 +204,7 @@ def main():
             # create bullets
             elif event.type == KEYDOWN and event.key == K_SPACE:
                 print("space")
-                fork = Fork(player.rect.top)
+                fork = Fork(player.forkPos())
                 allsprites.add(fork)
                 
             # create pastry, called every second
@@ -171,9 +216,9 @@ def main():
         # detect collisions
         # pastry / player collisions
         for pastry in pygame.sprite.spritecollide(player, pastries, 1):
-            #data.score += 1
             #player.kill()
             data.gameOver = True
+            #allsprites.add(GameOver)
         # pastry / fork collisions
         for pastry in pygame.sprite.groupcollide(forks, pastries, 1, 1).keys():
             #boom_sound.play()
@@ -191,8 +236,8 @@ def main():
         pygame.display.flip()
         
         # if game over
-        if data.gameOver:
-            drawGameOver(screen)
+        #if data.gameOver:
+         #   drawGameOver(screen)
         
     pygame.quit()
 
