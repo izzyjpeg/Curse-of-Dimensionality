@@ -3,6 +3,7 @@ import os, pygame, random, time
 from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
+print(__file__)
 
 # set up screen and data
 screen = Rect(0, 0, 1000, 750)
@@ -68,7 +69,7 @@ class Pastry(pygame.sprite.Sprite):
         self.rect.move_ip(self.speed[0], self.speed[1])
         # check if pastries have gone offscreen
         if not screen.contains(self.rect):
-            #self.facing = -self.facing;
+            self.facing = -self.facing;
             if (self.rect.right > screen.right) or (self.rect.left < 0):
                 self.speed[0] *= (-1)
             if (self.rect.bottom > screen.bottom) or (self.rect.top < 0):
@@ -139,7 +140,6 @@ def load_images(*files):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((1000, 750))
-    start = time.time()
     
     # load images
     background = load_image('background.jpg')
@@ -182,12 +182,12 @@ def main():
         allsprites.add(Score())
         
     # timer to create pastries every 200 ms
-    pygame.time.set_timer(USEREVENT, 1000)
+    pygame.time.set_timer(USEREVENT, 200)
     
     # game loop
     going = True
     while going:
-        clock.tick(60)
+        clock.tick(20)
         
         # event queue
         for event in pygame.event.get():
