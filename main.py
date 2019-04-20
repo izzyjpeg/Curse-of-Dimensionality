@@ -4,16 +4,34 @@ from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
+import createPet
+import cakegame
+
 # set up screen and data
-screen = Rect(0, 0, 1000, 750)
 class Data(object):
     def __init__(self):
-        self.width = screen[2]
-        self.height = screen[3]
+        self.screenRect = Rect(0, 0, 1000, 750)
+        self.width = self.screenRect[2]
+        self.height = self.screenRect[3]
         self.margin = [25, 25]
 
-        self.modes = ["choosePet", "createPet", "map", "cakegame", "flappygame", "feed", "clothe"]
-        self.mode = self.modes[0]
+        # 0: choosePet, 1: createPet, 2: map, 3: cakegame, 4: flappygame,
+        # 5: feed, 6: clothe
+        self.mode = 0
+        self.screen = pygame.display.set_mode((1000, 750))
+
+        # title and button info
+        self.titles = ["0 Which pet will you choose?", "1 Create a pet!", \
+                        "2 Map", "Cake Game", "Flappy Game", "Feed", "Clothe"]
+        self.titleX = self.width//2
+        self.titleY = self.height//12
+        self.buttons = ["Or, create a new one!", "Get pet!"]
+        self.lowerButtonX = self.width//2
+        self.lowerButtonY = self.height - self.height//3
+
+        # keep track of pets
+        self.pets = set()
+        self.currentPet = None
 
 data = Data()
 
@@ -27,56 +45,91 @@ def load_images(*files):
         imgs.append(load_image(file))
     return imgs
 
+# determine if a button has been clicked
+def mouseClick(button):
+    mousePos = pygame.mouse.get_pos()
+    buttonPos = button.rect
+    if (buttonPos.left < mousePos[0] < buttonPos.right) and \
+        (buttonPos.top < mousePos[1] < buttonPos.bottom):
+            return True
+    else:
+        return False
+
 # title class
 class Title(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, msg, x, y):
         pygame.sprite.Sprite.__init__(self)
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font(None, 40)
         self.color = Color('white')
-        self.size = self.font.size("Which pet will you choose?")
-        self.x = data.width//2 - self.size[0]//2
-        self.y = data.width//16
+
+        self.msg = msg
+        self.size = self.font.size(self.msg)
+        self.x = x
+        self.y = y
 
         self.update()
         self.rect = self.image.get_rect().move(self.x, self.y)
 
     def update(self):
-        if data.mode == "choosePet":
-            msg = "Which pet will you choose?"
-            self.image = self.font.render(msg, 1, self.color)
+        self.msg = data.titles[data.mode]
+        self.image = self.font.render(self.msg, 1, self.color)
+
+# button class
+class Button(pygame.sprite.Sprite):
+    def __init__(self, msg, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.font = pygame.font.Font(None, 36)
+        self.color = Color('white')
+
+        self.msg = msg
+        self.size = self.font.size(self.msg)
+        self.x = x
+        self.y = y
+
+        self.update()
+        self.rect = self.image.get_rect().move(self.x, self.y)
+
+    def update(self):
+        self.msg = data.buttons[data.mode]
+        typeRect = pygame.Rect(self.x, self.y, 100, 100)
+        pygame.draw.rect(data.screen, Color('white'), typeRect, 0)
+        self.image = self.font.render(self.msg, 1, self.color)
 
 
 # pet class
 class Pet(pygame.sprite.Sprite):
     images = []
-    def __init__(self, ID, name, color, numEyes, numLegs, faveFood):
+    def __init__(self, name, strawberry, angora, axolotl, seaCucumber, gown):
         pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[ID]
-        self.ID = ID
-        self.rect = self.image.get_rect(midbottom = (data.width//2 - ID*300, data.height - 100))
 
         # individual pet characteristics
         self.name = name
-        self.color = color
-        self.numEyes = numEyes
-        self.numLegs = numLegs
-        self.faveFood = faveFood
+        self.traits = {"strawberry" : strawberry, "angora" : angora, \
+                        "axolotl" : axolotl, "seaCucumber" : seaCucumber, \
+                        "gown" : gown}
 
-    #def update(self):
-      #  self.rect.move_ip(25 + self.ID, 25 + self.ID)
+        # get image based on those traits
+
+        imageID = createPet.featureDistance(self.traits)
+
+        self.image = self.images[int(imageID)]
+        self.ID = len(data.pets) + 1
+        self.pos = (data.width//2 - self.ID*300, data.height//2 - data.margin[1])
+        self.rect = self.image.get_rect(midbottom = self.pos)
+
 
 # main game function
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((1000, 750))
 
     # load images
     background = load_image('background.jpg')
-    petImages = load_images('cat.jpeg', 'bunny.jpeg')
+    petImages = load_images('img1.jpeg', 'img2.jpeg', 'img3.jpeg', \
+                            'img4.jpeg', 'img5.jpeg', 'img6.jpeg')
     Pet.images = petImages
 
     # display background
-    screen.blit(background, (0, 0))
+    data.screen.blit(background, (0, 0))
     pygame.display.flip()
 
     # create clock to keep track of time
@@ -84,18 +137,20 @@ def main():
 
     # initialize sprites
     allsprites = pygame.sprite.OrderedUpdates(())
-    Pet.containers = allsprites
-    Title.containers = allsprites
+    titles = pygame.sprite.Group()
+    buttons = pygame.sprite.Group()
+    pets = pygame.sprite.Group()
+    Pet.containers = pets
+    Title.containers = titles
+    Button.containers = buttons
 
-    # create score
+    # initialize title and create pet button
     if pygame.font:
-        allsprites.add(Title())
-
-    pet1 = Pet(0, "Herbert", "grey", 3, 4, "kimchi")
-    pet2 = Pet(1, "Jimothy", "pink", 2, 3, "ice cream")
-    allsprites.add(pet1)
-    allsprites.add(pet2)
-
+        if data.mode == 0:
+            createPetButton = Button(data.buttons[0], data.lowerButtonX, data.lowerButtonY)
+            title = Title(data.titles[0], data.titleX, data.titleY)
+        titles.add(title)
+        buttons.add(createPetButton)
 
     # game loop
     going = True
@@ -107,13 +162,35 @@ def main():
         for event in pygame.event.get():
             if event.type == QUIT:
                 going = False
+            # while on choose pet screen
+            if data.mode == 0:
+                if event.type == MOUSEBUTTONDOWN and mouseClick(createPetButton):
+                    data.mode = 1
+            # while on create pet screen
+            if data.mode == 1:
+                if event.type == MOUSEBUTTONDOWN and mouseClick(createPetButton):
+                    print("adding pet")
+                    pets.add(Pet("Bobby", 0.7, 0.3, 0.1, 0.3, 0.4))
+                    buttons.remove(createPetButton)
+            # while on map screen
+            if data.mode == 2:
+                if event.type == MOUSEBUTTONDOWN and mouseClick(cakeGameButton):
+                    data.mode = 3
+                    cakegame.main()
 
         # update all sprites
         allsprites.update()
+        titles.update()
+        buttons.update()
 
         # draw all sprites
-        screen.blit(background, (0, 0))
-        allsprites.draw(screen)
+        data.screen.blit(background, (0, 0))
+
+        allsprites.draw(data.screen)
+        titles.draw(data.screen)
+        buttons.draw(data.screen)
+        pets.draw(data.screen)
+
         pygame.display.flip()
 
     pygame.quit()
