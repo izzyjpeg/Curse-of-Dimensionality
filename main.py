@@ -1,5 +1,5 @@
 # import everything
-import os, pygame, random, time
+import os, pygame, random, time, sys
 from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
@@ -25,15 +25,34 @@ class Data(object):
                         "2 Map", "Cake Game", "Flappy Game", "Feed", "Clothe"]
         self.titleX = self.width//2
         self.titleY = self.height//12
-        self.buttons = ["Or, create a new one!", "Get pet!", "To the map!", \
-                        ["Cake Game", "Flappy Game", "Feed Pet"]]
+        self.buttons = {"create pet" : "Or, create a new one!", \
+                        "get pet" : "Get pet!", "go to map": "To the map!", \
+                        "map" : ["Cake Game", "Flappy Game", "Feed Pet"],
+                        "back" : "Back"}
         self.lowerButtonX = self.width//2
         self.lowerButtonY = self.height - self.height//3
+        self.upperLeftButtonX = self.margin[0]
+        self.upperLeftButtonY = self.margin[1]
+
+        self.categories = ["strawberry", "angora", "axolotl", "seaCucumber", "gown", \
+              "persianCat", "hoopskirt", "acorn", "siameseCat", "bathTowel",\
+              "dough", "coffeepot"]
         self.attributeSliders = ["How much does your pet like fruit?", \
                                  "How soft and fluffy is your pet?", \
                                  "How quirky is your pet?", \
                                  "How wet and slippery is your pet?", \
-                                 "How fancy and pretty is your pet?"]
+                                 "How fancy and pretty is your pet?", \
+                                 "How floofy is your pet?", \
+                                 "How old-fashioned is your pet?", \
+                                 "How much does your pet like the forest?", \
+                                 "How expensive and exotic is your pet?", \
+                                 "How clean is your pet?", \
+                                 "How chunky and round is your pet?", \
+                                 "How much does your pet like coffee?"]
+        self.petImages = {0 : 'img0.jpeg', 1 : 'img1.jpeg', 2 : 'img2.jpeg', 3: 'img3.jpeg', \
+                          4 : 'img4.jpeg', 5 : 'img5.jpeg', 6 : 'img6.jpeg', 7 : 'img7.jpeg', \
+                          8 : 'img8.jpeg', 9 : 'img9.jpeg', 10 : 'img10.jpeg'}
+
         # keep track of pets
         self.pets = set()
         self.currentPet = None
@@ -41,11 +60,12 @@ class Data(object):
         # colors
         self.transparent = (0, 64, 64, 64)
         self.trans = (1, 1, 1)
-        self.blue = (50, 30, 250)
-        self.pink = (170, 0, 20)
-        self.yellow = (100, 100, 0)
-        self.orange = (200, 100, 0)
+        self.blue = (120, 169, 255)
+        self.pink = (255, 129, 231)
+        self.yellow = (255, 244, 81)
+        self.orange = (255, 180, 81)
         self.black = (0, 0, 0)
+        self.grey = (176, 169, 178)
         self.white = (250, 250, 250)
 
 data = Data()
@@ -60,19 +80,9 @@ def load_images(*files):
         imgs.append(load_image(file))
     return imgs
 
-# determine if a button has been clicked
-def mouseClick(button):
-    mousePos = pygame.mouse.get_pos()
-    buttonPos = button.rect
-    if (buttonPos.left < mousePos[0] < buttonPos.right) and \
-        (buttonPos.top < mousePos[1] < buttonPos.bottom):
-            return True
-    else:
-        return False
-
 # button class
 class Button(object):
-    def __init__(self, msg, location, mode, bg=Color("White"), fg=Color("Black")):
+    def __init__(self, msg, location, orientation, mode, bg=Color("White"), fg=Color("Black")):
         self.color = bg
         self.bg = bg
         self.fg = fg
@@ -85,7 +95,10 @@ class Button(object):
         self.msgRect = self.msgSurf.get_rect(center = [s//2 for s in self.size])
 
         self.surface = pygame.surface.Surface(self.size)
-        self.rect = self.surface.get_rect(center = location)
+        if orientation == "center":
+            self.rect = self.surface.get_rect(center = location)
+        elif orientation == "topleft":
+            self.rect = self.surface.get_rect(topleft = location)
 
     def draw(self):
         self.mouseover()
@@ -119,10 +132,10 @@ class Slider(object):
         self.font = pygame.font.Font(None, 20)
         self.size = self.font.size(name)
 
-        self.margin = (15, 15)
+        self.margin = (12, 14)
         self.width, self.height = 300, self.size[1] + 2*self.margin[1]
         self.x = pos
-        self.y = data.height//4 + (self.ID - 1)*(self.height + self.margin[0])
+        self.y = data.height//7 + (self.ID - 1)*(self.height + self.margin[0])
         self.rect = Rect(self.x, self.y, self.width, self.height)
         self.buttR = 10
         self.length = 200
@@ -132,26 +145,24 @@ class Slider(object):
         self.hit = False
 
         self.msgSurf = self.font.render(name, 1, data.black)
-        self.msgRect = self.msgSurf.get_rect(midleft = (self.margin[0], self.height//2 - 10))
-        self.sPos = (self.margin[0], self.height//2 + 10)
-
-        print(type(self.val), self.val)
+        self.msgRect = self.msgSurf.get_rect(midleft = (self.margin[0], self.height//2 - self.margin[1]//2))
+        self.sPos = (self.margin[0], self.height//2 + self.margin[1]//2)
 
         # static graphics: slider bg
         self.surf.fill((data.white))
-        pygame.draw.rect(self.surf, data.yellow, [self.sPos[0], self.sPos[1], self.length, 6], 0)
+        pygame.draw.rect(self.surf, data.grey, [self.sPos[0], self.sPos[1], self.length, 4], 0)
         self.surf.blit(self.msgSurf, self.msgRect)
 
         # dynamic graphics: slider button
         self.buttonSurf = pygame.surface.Surface((self.buttR*2, self.buttR*2))
         self.buttonSurf.fill(data.trans)
         self.buttonSurf.set_colorkey(data.trans)
-        pygame.draw.circle(self.buttonSurf, data.black, (self.buttR, self.buttR), self.buttR, 0)
-        pygame.draw.circle(self.buttonSurf, data.orange, (self.buttR, self.buttR), self.buttR - 2, 0)
+        pygame.draw.circle(self.buttonSurf, data.grey, (self.buttR, self.buttR), self.buttR, 0)
+        pygame.draw.circle(self.buttonSurf, data.pink, (self.buttR, self.buttR), self.buttR - 2, 0)
 
     def draw(self):
         surf = self.surf.copy()
-        pos = (0 + int((self.val-self.min)/(self.max-self.min)*self.length), self.sPos[1] + 3)
+        pos = (0 + int((self.val-self.min)/(self.max-self.min)*self.length), self.sPos[1] + 2)
         self.buttonRect = self.buttonSurf.get_rect(center=pos)
         surf.blit(self.buttonSurf, self.buttonRect)
         self.buttonRect.move_ip(self.x, self.y)
@@ -173,33 +184,71 @@ class Slider(object):
 # pet class
 class Pet(object):
     images = []
-    def __init__(self, name, strawberry, angora, axolotl, seaCucumber, gown):
+    def __init__(self, name, strawberry, angora, axolotl, seaCucumber, gown, \
+                 persianCat, hoopskirt, acorn, siameseCat, bathTowel, dough, \
+                 coffeepot):
 
         # individual pet characteristics
         self.name = name
-        self.traits = {"strawberry" : strawberry, "angora" : angora, \
-                        "axolotl" : axolotl, "seaCucumber" : seaCucumber, \
-                        "gown" : gown}
+        self.traits = {0 : strawberry, 1 : angora, 2 : axolotl, \
+                       3 : seaCucumber, 4 : gown, 5 : persianCat, 6: hoopskirt, \
+                       7 : acorn, 8 : siameseCat, 9 : bathTowel, 10 : dough, \
+                       11 : coffeepot}
+
+        self.strongest = 0.0
+        for trait in self.traits:
+            if self.traits[trait] > self.strongest:
+                self.strongest = trait
+        self.desc = "%s is a pet whose strongest trait is %s" % (self.name, data.categories[self.strongest])
 
         # get image based on those traits
-
-        imageID = createPet.featureDistance(self.traits)
-
-        self.image = self.images[int(imageID)]
+        self.imageID = int(createPet.featureDistance(self.traits))
+        self.image = self.images[self.imageID]
         self.ID = len(data.pets) + 1
+
+        # initial position and rect
         self.pos = (data.margin[0] + self.ID*200, data.height//2 - data.margin[1])
         self.rect = self.image.get_rect(midbottom = self.pos)
-        self.msgPos = (self.pos[0] + self.rect.width//2, self.pos[1] + self.rect.height + 10)
+        #self.namePos = (self.pos[0] + self.rect.width//2, self.pos[1] + self.rect.height + 10)
+        #self.descPos = (self.pos[0] + self.rect.width//2, self.pos[1] + self.rect.height + 10)
 
-        self.font = pygame.font.Font(None, 30)
+        self.fontSize = 36
+        self.font = pygame.font.Font(None, self.fontSize)
 
     def draw(self):
-        data.screen.blit(self.image, self.pos)
-        if data.mode < 3:
-            self.msgSurf = self.font.render(self.name, 1, data.black)
-            self.msgRect = self.msgSurf.get_rect(midtop = self.msgPos)
-            data.screen.blit(self.msgSurf, self.msgRect)
+        # update pos and rect based on mode, display whatever is necessary
+        if data.mode == 0:
+            self.pos = (data.margin[0] + self.ID*200, data.height//3 + data.margin[1])
+        elif data.mode == 1:
+            self.pos = (data.width//3 + self.ID*200, data.height//3)
+        elif data.mode == 2:
+            self.pos = (data.width//2 - self.rect.width, data.height//2 - self.rect.height)
+            self.fontSize = 44
+            # desc is only shown in mode 2
+            self.descPos = (self.pos[0] + self.rect.width//2, self.pos[1] - 20)
+            self.descSurf = self.font.render(self.desc, 1, data.black)
+            self.descRect = self.descSurf.get_rect(midtop = self.descPos)
+            data.screen.blit(self.descSurf, self.descRect)
+        elif data.mode == 3:
+            self.pos == (data.margin[0], data.height - data.margin[1])
 
+        self.rect = self.image.get_rect(midbottom = self.pos)
+        data.screen.blit(self.image, self.pos)
+        # display name or not, based on mode
+        if data.mode < 3:
+            self.namePos = (self.pos[0] + self.rect.width//2, self.pos[1] + self.rect.height + 10)
+            self.nameSurf = self.font.render(self.name, 1, data.black)
+            self.nameRect = self.nameSurf.get_rect(midtop = self.namePos)
+            data.screen.blit(self.nameSurf, self.nameRect)
+
+    def mouseClick(self):
+        mousePos = pygame.mouse.get_pos()
+        petPos = self.rect
+        if (petPos.left < mousePos[0] < petPos.right) and \
+            (petPos.top < mousePos[1] < petPos.bottom):
+                return True
+        else:
+            return False
 
 # main game function
 def main():
@@ -207,9 +256,10 @@ def main():
 
     # load images
     background = load_image('background.jpg')
-    petImages = load_images('img1.jpeg', 'img2.jpeg', 'img3.jpeg', \
-                            'img4.jpeg', 'img5.jpeg', 'img6.jpeg')
-    Pet.images = petImages
+    Pet.images = load_images('img0.jpeg', 'img1.jpeg', 'img2.jpeg', \
+                            'img3.jpeg', 'img4.jpeg', 'img5.jpeg', \
+                            'img6.jpeg', 'img7.jpeg', 'img8.jpeg', \
+                            'img9.jpeg', 'img10.jpeg')
 
     # display background
     data.screen.blit(background, (0, 0))
@@ -219,33 +269,45 @@ def main():
     clock = pygame.time.Clock()
 
     # initialize sprites
-    allsprites = pygame.sprite.OrderedUpdates(())
-    titles, buttons, sliders = [], [], []
-    pets = []
-    Pet.containers = pets
+    titles, buttons, sliders, pets = [], [], [], []
 
     # initialize titles, buttons, sliders
     if pygame.font:
         # mode 0: choose pet
-        createPetButton = Button(data.buttons[0], (data.lowerButtonX, data.lowerButtonY), 0)
-        choosePetTitle = Button(data.titles[0], (data.titleX, data.titleY), 0)
+        createPetButton = Button(data.buttons["create pet"], (data.lowerButtonX, data.lowerButtonY), "center", 0)
+        choosePetTitle = Button(data.titles[0], (data.titleX, data.titleY), "center", 0)
+
         # mode 1: create pet
-        getPetButton = Button(data.buttons[1], (data.lowerButtonX, data.lowerButtonY), 1)
-        slider1 = Slider(1, data.attributeSliders[0], 50, 100, 0, 50, 1)
-        slider2 = Slider(2, data.attributeSliders[1], 50, 100, 0, 50, 1)
-        slider3 = Slider(3, data.attributeSliders[2], 50, 100, 0, 50, 1)
-        slider4 = Slider(4, data.attributeSliders[3], 50, 100, 0, 50, 1)
-        slider5 = Slider(5, data.attributeSliders[4], 50, 100, 0, 50, 1)
+        backButton1 = Button(data.buttons["back"], (data.upperLeftButtonX, data.upperLeftButtonY), "topleft", 1)
+        getPetButton = Button(data.buttons["get pet"], (data.lowerButtonX, data.lowerButtonY), "center", 1)
+        strawberry = Slider(1, data.attributeSliders[0], 50, 100, 0, data.margin[0], 1)
+        angora = Slider(2, data.attributeSliders[1], 50, 100, 0, data.margin[0], 1)
+        axolotl = Slider(3, data.attributeSliders[2], 50, 100, 0, data.margin[0], 1)
+        seaCucumber = Slider(4, data.attributeSliders[3], 50, 100, 0, data.margin[0], 1)
+        gown = Slider(5, data.attributeSliders[4], 50, 100, 0, data.margin[0], 1)
+        persianCat = Slider(6, data.attributeSliders[5], 50, 100, 0, data.margin[0], 1)
+        hoopskirt = Slider(7, data.attributeSliders[6], 50, 100, 0, data.margin[0], 1)
+        acorn = Slider(8, data.attributeSliders[7], 50, 100, 0, data.margin[0], 1)
+        siameseCat = Slider(9, data.attributeSliders[8], 50, 100, 0, data.margin[0], 1)
+        bathTowel = Slider(10, data.attributeSliders[9], 50, 100, 0, data.margin[0], 1)
+        dough = Slider(11, data.attributeSliders[10], 50, 100, 0, data.margin[0], 1)
+        coffeepot = Slider(12, data.attributeSliders[11], 50, 100, 0, data.margin[0], 1)
+
         # mode 2: show pet
-        goToMapButton = Button(data.buttons[2], (data.lowerButtonX, data.lowerButtonY), 2)
+        backButton2 = Button(data.buttons["back"], (data.upperLeftButtonX, data.upperLeftButtonY), "topleft", 2)
+        goToMapButton = Button(data.buttons["go to map"], (data.lowerButtonX, data.lowerButtonY), "center", 2)
+
         # mode 3: map
-        cakeGameButton = Button(data.buttons[3][0], (data.lowerButtonX, data.lowerButtonY), 3)
-        flappyGameButton = Button(data.buttons[3][1], (data.lowerButtonX + 200, data.lowerButtonY + 200), 3)
-        feedPetButton = Button(data.buttons[3][2], (data.lowerButtonX + 400, data.lowerButtonY + 400), 3)
+        cakeGameButton = Button(data.buttons["map"][0], (data.lowerButtonX, data.lowerButtonY), "center", 3)
+        flappyGameButton = Button(data.buttons["map"][1], (data.lowerButtonX + 200, data.lowerButtonY + 200), "center", 3)
+        feedPetButton = Button(data.buttons["map"][2], (data.lowerButtonX + 400, data.lowerButtonY + 400), "center", 3)
 
         titles += [choosePetTitle]
-        buttons += [createPetButton, getPetButton, cakeGameButton, flappyGameButton, feedPetButton]
-        sliders += [slider1, slider2, slider3, slider4, slider5]
+        buttons += [createPetButton, getPetButton, cakeGameButton, \
+                    flappyGameButton, feedPetButton, backButton1, backButton2, \
+                    goToMapButton]
+        sliders += [strawberry, angora, axolotl, seaCucumber, gown, persianCat, \
+                    hoopskirt, acorn, siameseCat, bathTowel, dough, coffeepot]
         for slider in sliders:
             slider.draw()
 
@@ -264,21 +326,38 @@ def main():
             # CHOOSE PET SCREEN
             if data.mode == 0:
                 if event.type == MOUSEBUTTONDOWN:
+                    # user wants to create a new pet
                     if createPetButton.mouseClick():
                         data.mode = 1
+                    # user selects an existing pet
+                    for pet in pets:
+                        if pet.mouseClick():
+                            data.currentPet = pet
+                            data.mode = 2
+                            print("current pet", data.currentPet, data.currentPet.name)
 
             # CREATE PET SCREEN
-            if data.mode == 1:
+            elif data.mode == 1:
                 if event.type == MOUSEBUTTONDOWN:
+                    # back button
+                    if backButton1.mouseClick():
+                        data.mode = 0
+                    # get pet button
                     if getPetButton.mouseClick():
                         print("adding pet")
                         traits = []
                         for slider in sliders:
                             traits += [slider.getDecimal()]
-                        pet = Pet("Boompus", traits[0], traits[1], traits[2], traits[3], traits[4])
+                        print("traits", traits)
+                        pet = Pet("Boompus", traits[0], traits[1], traits[2], \
+                                  traits[3], traits[4], traits[5], traits[6], \
+                                  traits[7], traits[8], traits[9], traits[10], \
+                                  traits[11])
                         pets += [pet]
                         data.pets.add(pet)
-
+                        data.currentPet = pet
+                        data.mode = 2
+                    # sliders
                     pos = pygame.mouse.get_pos()
                     for slider in sliders:
                         if slider.buttonRect.collidepoint(pos):
@@ -287,24 +366,33 @@ def main():
                     for slider in sliders:
                         slider.hit = False
 
+            # SHOW PET SCREEN
+            elif data.mode == 2:
+                if event.type == MOUSEBUTTONDOWN:
+                    # back button
+                    if backButton2.mouseClick():
+                        data.mode = 0
+                    # go to map button
+                    if goToMapButton.mouseClick():
+                        data.mode = 3
+
             # MAP SCREEN
-            if data.mode == 3:
+            elif data.mode == 3:
                 if event.type == MOUSEBUTTONDOWN and cakeGameButton.mouseClick:
                     data.mode = 4
-                    cakegame.main()
+                    print(data.currentPet.imageID)
+                    cakegame.main(data.petImages[data.currentPet.imageID])
 
-        # update all sprites
-        allsprites.update()
+        # update sliders
         for slider in sliders:
             if slider.hit:
                 slider.move()
 
         # draw all sprites
         data.screen.blit(background, (0, 0))
-
-        allsprites.draw(data.screen)
         for pet in pets:
-            pet.draw()
+            if (data.mode >= 2) or (pet == data.currentPet):
+                pet.draw()
         for button in buttons:
             if button.mode == data.mode:
                 button.draw()
@@ -315,11 +403,10 @@ def main():
             if slider.mode == data.mode:
                 slider.draw()
 
-        #pets.draw(data.screen)
-
         pygame.display.flip()
 
     pygame.quit()
+    sys.exit()
 
 if __name__ == '__main__':
     main()

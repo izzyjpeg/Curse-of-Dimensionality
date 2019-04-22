@@ -1,36 +1,33 @@
 # import everything
-import os, pygame, random, time
+import os, pygame, random, time, sys
 from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 print(__file__)
 
 # set up screen and data
-screen = Rect(0, 0, 1000, 750)
 class Data(object):
     def __init__(self):
-        self.width = screen[2]
-        self.height = screen[3]
+        self.screen = Rect(0, 0, 1000, 750)
+        self.screenSurf = pygame.display.set_mode((1000, 750))
+        
+        self.width = self.screen[2]
+        self.height = self.screen[3]
         self.margin = [25, 25]
         
         # game state info
         self.gameOver = False
         self.score = 0
         
-        #self.boxWidth, self.boxHeight = 200, 100
-        #self.bx, self.by = self.width//2 - self.boxWidth, self.height//2 + self.boxHeight
-        
 data = Data()
 
 # player class
-class Kewpie(pygame.sprite.Sprite):
-    speed = [50, 5]
-    #bounce = 10
-    images = []
-    def __init__(self):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[0]
-        self.rect = self.image.get_rect(midbottom = screen.midbottom)
+class Player(object):
+    def __init__(self, image):
+        speed = [50, 5]
+        self.image = image
+        self.flipImage = pygame.transform.flip(self.image, 1, 0)
+        self.rect = self.image.get_rect(midbottom = data.screen.midbottom)
         self.origtop = self.rect.top
         self.facing = -1
         self.forkOffset = -5
@@ -40,13 +37,17 @@ class Kewpie(pygame.sprite.Sprite):
         if direction:
             self.facing = direction
         self.rect.move_ip(direction*self.speed[0], 0)
-        self.rect = self.rect.clamp(screen)
+        self.rect = self.rect.clamp(data.screen)
         # use left or right-facing image
         if direction < 0:
-            self.image = self.images[0]
+            self.image = self.image
         elif direction > 0:
-            self.image = self.images[1]
-        #self.rect.top = self.origtop - (self.rect.left//self.bounce%2)
+            self.image = self.flipImage
+        
+    def draw(self):
+        self.pos = (data.width//2, data.height - data.margin[0])
+        self.rect = self.image.get_rect(midbottom = self.pos)
+        data.screenSurf.blit(self.image, self.pos)
     
     # controls where the fork originates
     def forkPos(self):
@@ -54,28 +55,28 @@ class Kewpie(pygame.sprite.Sprite):
         return pos, self.rect.centery
             
 #obstacle class
-class Pastry(pygame.sprite.Sprite):
+class Pastry(object):
     speed = [25, 25]
     images = []
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = random.choice(self.images)
-        self.rect = self.image.get_rect(midbottom = screen.midbottom)
+        self.rect = self.image.get_rect(midbottom = data.screen.midbottom)
         self.facing = random.choice((-1,1)) * self.speed[0]
         if self.facing < 0:
-            self.rect.right = screen.right
+            self.rect.right = data.screen.right
         
     def update(self):
         self.rect.move_ip(self.speed[0], self.speed[1])
         # check if pastries have gone offscreen
-        if not screen.contains(self.rect):
+        if not data.screen.contains(self.rect):
             self.facing = -self.facing;
-            if (self.rect.right > screen.right) or (self.rect.left < 0):
+            if (self.rect.right > data.screen.right) or (self.rect.left < 0):
                 self.speed[0] *= (-1)
-            if (self.rect.bottom > screen.bottom) or (self.rect.top < 0):
+            if (self.rect.bottom > data.screen.bottom) or (self.rect.top < 0):
                 self.speed[1] *= (-1)
-            #self.rect.top = self.rect.bottom + 1
-            #self.rect = self.rect.clamp(screen)
+    
+    def draw(self):
+        data.screenSurf.blit(self.image, self.rect.midbottom)
             
 # bullet class
 class Fork(pygame.sprite.Sprite):
@@ -113,9 +114,8 @@ class Score(pygame.sprite.Sprite):
             self.image = self.font.render(msg, 1, self.color)
 
 # draw game over screen
-class GameOver(pygame.sprite.Sprite):
+class GameOver():
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self, self.containers)
         self.width, self.height = 300, 100
         self.x = data.width//2 - self.width
         self.y = data.height//2 - self.height
@@ -124,7 +124,7 @@ class GameOver(pygame.sprite.Sprite):
     def update(self):
         if data.gameOver:
             print("game is over")
-            pygame.draw.rect(screen, self.color, self.rect, width=0)
+            pygame.draw.rect(data.screen, self.color, self.rect, width=0)
 
 # helper functions to load images
 def load_image(name):
@@ -137,15 +137,13 @@ def load_images(*files):
     return imgs
 
 # main game function
-def main():
+def main(petImg):
     pygame.init()
-    screen = pygame.display.set_mode((1000, 750))
     
     # load images
     background = load_image('background.jpg')
     
-    kewpieImgs = load_image('kewpieleft.png')
-    Kewpie.images = [kewpieImgs, pygame.transform.flip(kewpieImgs, 1, 0)]
+    playerImg = load_image(petImg)
     
     pastryImgs = [load_image('cake.png'), load_image('boba.png')]
     Pastry.images = pastryImgs
@@ -156,26 +154,24 @@ def main():
     # scale the background image so that it fills the window and
     # successfully overwrites the old sprite position.
     #background = pygame.transform.scale2x(background)
-    screen.blit(background, (0, 0))
+    data.screenSurf.blit(background, (0, 0))
     pygame.display.flip()
     
     # create clock to keep track of time
     clock = pygame.time.Clock()
 
     # group sprites
-    pastries = pygame.sprite.LayeredUpdates()
+    pastries = []
     forks = pygame.sprite.LayeredUpdates()
     
     # initialize sprites
     allsprites = pygame.sprite.OrderedUpdates(())
-    Kewpie.containers = allsprites
-    Pastry.containers = pastries#allsprites, pastries
     Fork.containers = allsprites, forks
     Score.containers = allsprites
     GameOver.containers = allsprites
     
     # create player
-    player = Kewpie()
+    player = Player(playerImg)
     
     # create score
     if pygame.font:
@@ -211,30 +207,33 @@ def main():
             # create pastry, called every second
             elif event.type == USEREVENT:
                 pastry = Pastry()
-                #allsprites.add(pastry)
-                screen.blit(pastry.image, (pastry.rect[0],pastry.rect[1]))
+                pastries += [pastry]
+                data.screenSurf.blit(pastry.image, (pastry.rect[0],pastry.rect[1]))
         
         # detect pastry / player collisions
-        for pastry in pygame.sprite.spritecollide(player, pastries, 1):
-            #player.kill()
-            data.gameOver = True
+        #for pastry in pygame.sprite.spritecollide(player, pastries, 1):
+         #   #player.kill()
+          #  data.gameOver = True
             
         # detect pastry / fork collisions
-        for pastry in pygame.sprite.groupcollide(forks, pastries, 1, 1).keys():
-            data.score += 1
+        #for pastry in pygame.sprite.groupcollide(forks, pastries, 1, 1).keys():
+         #   data.score += 1
         
         # update all sprites
         allsprites.update()
-        for pastry in pygame.sprite.Group.sprites(pastries):
+        for pastry in pastries:
             pastry.update()
         
         # draw all sprites
-        screen.blit(background, (0, 0))
-        allsprites.draw(screen)
-        pastries.draw(screen)
+        data.screenSurf.blit(background, (0, 0))
+        allsprites.draw(data.screenSurf)
+        for pastry in pastries:
+            pastry.draw()
+        player.draw()
         pygame.display.flip()
         
     pygame.quit()
+    sys.exit()
 
 if __name__ == '__main__':
     main()
