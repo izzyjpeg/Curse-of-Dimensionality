@@ -3,41 +3,52 @@ import os, pygame, random, time, sys
 from pygame.locals import *
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
-print(__file__)
 
 # set up screen and data
 class Data(object):
     def __init__(self):
-        self.screen = Rect(0, 0, 1000, 750)
-        self.screenSurf = pygame.display.set_mode((1000, 750))
+        self.screenRect = Rect(0, 0, 1000, 700)
+        self.screenSurf = pygame.display.set_mode((1000, 700))
         
-        self.width = self.screen[2]
-        self.height = self.screen[3]
+        self.width = self.screenRect[2]
+        self.height = self.screenRect[3]
         self.margin = [25, 25]
         
         # game state info
         self.gameOver = False
         self.score = 0
+        self.scoreMsg = "Treats Consumed: "
+        self.playerHitCount = 0
+        self.playerHitCountMsg = "Hits taken: "
+
+        self.playerPos = (self.width // 2, self.height // 8 - self.margin[1])
+        self.scorePos = (self.width - self.margin[0], self.height // 8)        
+        self.playerHitCountPos = (self.width - self.margin[0], self.height // 8 + 20)
+        
+        # colors
+        self.black = (0, 0, 0)
+        self.grey = (176, 169, 178)
+        self.white = (250, 250, 250)
         
 data = Data()
 
 # player class
 class Player(object):
     def __init__(self, image):
-        speed = [50, 5]
+        self.speed = [50, 0]
         self.image = image
         self.flipImage = pygame.transform.flip(self.image, 1, 0)
-        self.rect = self.image.get_rect(midbottom = data.screen.midbottom)
-        self.origtop = self.rect.top
         self.facing = -1
-        self.forkOffset = -5
         
-    # move Kewpie based on input direction (left or right)
+        self.size = self.image.get_size()
+        self.pos = (data.width//2 - self.size[0]//2, data.height - self.size[1]//2 - data.margin[1])
+        self.rect = self.image.get_rect(center = self.pos)
+        
+    # move player based on input direction (left or right)
     def move(self, direction):
         if direction:
             self.facing = direction
-        self.rect.move_ip(direction*self.speed[0], 0)
-        self.rect = self.rect.clamp(data.screen)
+        self.rect.move_ip(direction * self.speed[0], 0)
         # use left or right-facing image
         if direction < 0:
             self.image = self.image
@@ -45,86 +56,115 @@ class Player(object):
             self.image = self.flipImage
         
     def draw(self):
-        self.pos = (data.width//2, data.height - data.margin[0])
-        self.rect = self.image.get_rect(midbottom = self.pos)
-        data.screenSurf.blit(self.image, self.pos)
+        data.screenSurf.blit(self.image, self.rect.center)
     
     # controls where the fork originates
     def forkPos(self):
-        pos = (self.facing * self.forkOffset) + self.rect.centerx
-        return pos, self.rect.centery
+        forkPos = self.rect.centerx
+        return forkPos, self.rect.centery
+        
+    def collisionCheck(self, other):
+        return self.rect.colliderect(other.rect)
             
 #obstacle class
 class Pastry(object):
-    speed = [25, 25]
     images = []
     def __init__(self):
         self.image = random.choice(self.images)
-        self.rect = self.image.get_rect(midbottom = data.screen.midbottom)
-        self.facing = random.choice((-1,1)) * self.speed[0]
-        if self.facing < 0:
-            self.rect.right = data.screen.right
+        self.rect = self.image.get_rect(topright = (0,0))
+        self.speed = [random.randint(1, 25), random.randint(1,25)]
+        self.hit = False
         
     def update(self):
-        self.rect.move_ip(self.speed[0], self.speed[1])
-        # check if pastries have gone offscreen
-        if not data.screen.contains(self.rect):
-            self.facing = -self.facing;
-            if (self.rect.right > data.screen.right) or (self.rect.left < 0):
+        # check if pastries have gone offscreen, bounce and return to rect
+        if not data.screenRect.contains(self.rect):
+            if (self.rect.right > data.screenRect.right) or (self.rect.left < 0):
                 self.speed[0] *= (-1)
-            if (self.rect.bottom > data.screen.bottom) or (self.rect.top < 0):
+                if self.rect.right > data.screenRect.right:
+                    self.rect.right = data.screenRect.right
+                elif self.rect.left < 0:
+                    self.rect.left = 0
+            if (self.rect.bottom > data.screenRect.bottom) or (self.rect.top < 0):
                 self.speed[1] *= (-1)
+                if self.rect.bottom > data.screenRect.bottom:
+                    self.rect.bottom = data.screenRect.bottom
+                elif self.rect.top < 0:
+                    self.rect.top = 0
+        self.rect.move_ip(self.speed[0], self.speed[1])
+    
+    def draw(self):
+        data.screenSurf.blit(self.image, self.rect.center)
+            
+# bullet class
+class Fork(object):
+    images = []
+    def __init__(self, pos):
+        self.image = self.images[0]
+        self.rect = self.image.get_rect(midbottom = pos)
+        self.speed = [0, -20]
+        self.hit = False
+
+    def update(self):
+        self.rect.move_ip(self.speed[0], self.speed[1])
+        if self.rect.bottom <= data.screenRect.top:
+            self.kill()
     
     def draw(self):
         data.screenSurf.blit(self.image, self.rect.midbottom)
-            
-# bullet class
-class Fork(pygame.sprite.Sprite):
-    speed = [0, -15]
-    images = []
-    def __init__(self, pos):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[0]
-        self.rect = self.image.get_rect(midbottom = pos)
-
-    def update(self):
-        self.rect.move_ip(self.speed[0], self.speed[1])
-        if self.rect.bottom <= 0:
-            self.kill()
-
-# score class
-class Score(pygame.sprite.Sprite):
-    def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.font = pygame.font.Font(None, 36)
-        #self.font = pygame.font.SysFont("maagkrampttf", 36)
-        self.color = Color('white')
-        self.lastscore = -1
-        self.size = self.font.size("Treats Consumed: 100")
-        self.x = data.width - self.size[0] - data.margin[0]
-        self.y = data.width//20
         
-        self.update()
-        self.rect = self.image.get_rect().move(self.x, self.y)
+    def collisionCheck(self, other):
+        return self.rect.colliderect(other.rect)
 
-    def update(self):
-        if data.score != self.lastscore:
-            self.lastscore = data.score
-            msg = "Treats Consumed: %d" % data.score
-            self.image = self.font.render(msg, 1, self.color)
+# message class
+class Message():
+    def __init__(self, msg, location, orientation, mode):
+        self.bg, self.fg = data.white, data.black
+        self.mode = mode
+        self.font = pygame.font.Font(None, 36)
+        self.msg = msg
+
+        self.size = self.font.size(self.msg)
+        self.msgSurf = self.font.render(self.msg, 1, self.fg)
+        self.msgRect = self.msgSurf.get_rect(center = [s//2 for s in self.size])
+
+        self.surface = pygame.surface.Surface(self.size)
+        if orientation == "center":
+            self.rect = self.surface.get_rect(center = location)
+        elif orientation == "topleft":
+            self.rect = self.surface.get_rect(topleft = location)
+        elif orientation == "topright":
+            self.rect = self.surface.get_rect(topright = location)
+            
+    def update(self, newMsg):
+        self.msg = newMsg
+
+    def draw(self):
+        self.surface.fill(self.bg)
+        self.surface.blit(self.msgSurf, self.msgRect)
+        data.screenSurf.blit(self.surface, self.rect)
 
 # draw game over screen
-class GameOver():
+class GameOverBox():
     def __init__(self):
         self.width, self.height = 300, 100
-        self.x = data.width//2 - self.width
-        self.y = data.height//2 - self.height
-        self.rect = Rect(self.x, self.y, self.width, self.height)
-        self.color = Color(white)
-    def update(self):
-        if data.gameOver:
-            print("game is over")
-            pygame.draw.rect(data.screen, self.color, self.rect, width=0)
+        self.x = data.width//2
+        self.y = data.height//2
+        self.text = "Oh no, you ate too much! Game Over!"
+        self.textColor = data.black
+        self.bgColor = data.white
+        self.font = pygame.font.Font(None, 30)
+        
+    def draw(self):
+        self.size = self.font.size(self.text)
+        self.textSurf = self.font.render(self.text, 1, self.textColor)
+        self.textRect = self.textSurf.get_rect(center = (self.x, self.y))
+        
+        self.surface = pygame.surface.Surface((self.size[0] + data.margin[0], self.size[1] + data.margin[1]))
+        self.rect = self.surface.get_rect(center = (self.x, self.y))
+        
+        self.surface.fill(self.bgColor)
+        self.surface.blit(self.textSurf, self.textRect)
+        data.screenSurf.blit(self.surface, self.rect)
 
 # helper functions to load images
 def load_image(name):
@@ -161,74 +201,93 @@ def main(petImg):
     clock = pygame.time.Clock()
 
     # group sprites
-    pastries = []
-    forks = pygame.sprite.LayeredUpdates()
-    
-    # initialize sprites
-    allsprites = pygame.sprite.OrderedUpdates(())
-    Fork.containers = allsprites, forks
-    Score.containers = allsprites
-    GameOver.containers = allsprites
+    pastries = set()
+    forks = set()
+    messages = []
     
     # create player
     player = Player(playerImg)
     
     # create score
     if pygame.font:
-        allsprites.add(Score())
+        score = Message(data.scoreMsg, data.scorePos, "topright", 0)
+        playerHitCount = Message(data.playerHitCountMsg, data.playerHitCountPos, "topright", 0)
+        messages += [score, playerHitCount]
+        gameOverBox = GameOverBox()
         
-    # timer to create pastries every 200 ms
-    pygame.time.set_timer(USEREVENT, 200)
+    # timer to create pastries every 600 ms
+    pygame.time.set_timer(USEREVENT, 2000)
     
     # game loop
     going = True
     while going:
-        clock.tick(20)
+        clock.tick(60)
         
         # event queue
         for event in pygame.event.get():
             if event.type == QUIT:
                 going = False
-            
-            # move left or right
-            elif event.type == KEYDOWN and event.key == K_LEFT:
-                print("left")
-                player.move(-1)
-            elif event.type == KEYDOWN and event.key == K_RIGHT:
-                print("right")
-                player.move(1)
                 
-            # create bullets
-            elif event.type == KEYDOWN and event.key == K_SPACE:
-                print("space")
-                fork = Fork(player.forkPos())
-                allsprites.add(fork)
+            elif event.type == KEYDOWN:
+                # move left or right
+                if event.key == K_LEFT:
+                    player.move(-1)
+                elif event.key == K_RIGHT:
+                    player.move(1)
+                # shoot a fork
+                elif event.key == K_SPACE:
+                    fork = Fork(player.forkPos())
+                    forks.add(fork)
+                # back to main game
+                elif event.key == K_q:
+                    print("quitting")
+                    going = False
+                    pygame.quit()
                 
             # create pastry, called every second
             elif event.type == USEREVENT:
                 pastry = Pastry()
-                pastries += [pastry]
-                data.screenSurf.blit(pastry.image, (pastry.rect[0],pastry.rect[1]))
+                pastries.add(pastry)
         
-        # detect pastry / player collisions
-        #for pastry in pygame.sprite.spritecollide(player, pastries, 1):
-         #   #player.kill()
-          #  data.gameOver = True
-            
-        # detect pastry / fork collisions
-        #for pastry in pygame.sprite.groupcollide(forks, pastries, 1, 1).keys():
-         #   data.score += 1
+        # detect collisions
+        newPastries, newForks = set(), set()
+        for fork in forks:
+            for pastry in pastries:
+                if fork.collisionCheck(pastry):
+                    pastry.hit = True
+                    fork.hit = True
+                    data.score += 1
+        for pastry in pastries:
+            if player.collisionCheck(pastry):
+                pastry.hit = True
+                data.playerHitCount += 1
+        for fork in forks:
+            if not fork.hit:
+                newForks.add(fork)
+        for pastry in pastries:
+            if not pastry.hit:
+                newPastries.add(pastry)
+        pastries = newPastries
+        forks = newForks
         
         # update all sprites
-        allsprites.update()
         for pastry in pastries:
             pastry.update()
+        for fork in forks:
+            fork.update()
+        #score.update(str(data.scoreMsg + str(data.score)))
+        #playerHitCount.update(str(data.playerHitCountMsg + str(data.playerHitCount)))
         
         # draw all sprites
         data.screenSurf.blit(background, (0, 0))
-        allsprites.draw(data.screenSurf)
         for pastry in pastries:
             pastry.draw()
+        for fork in forks:
+            fork.draw()
+        for message in messages:
+            message.draw()
+        if data.playerHitCount > 5:
+            gameOverBox.draw()
         player.draw()
         pygame.display.flip()
         
