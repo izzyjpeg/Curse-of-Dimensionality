@@ -43,9 +43,8 @@ class Data(object):
         self.centerY = self.height//2
 
         # 0: choosePet, 1: createPet, 2: showPet, 3: map, 4: cakegame,
-        # 5: flappygame, 6: feed
+        # 5: feed
         self.mode = 0
-        self.screen = pygame.display.set_mode((1000, 750))
 
         # title and button info
         self.titles = {"choose pet" : "Which pet will you choose?", \
@@ -54,8 +53,9 @@ class Data(object):
                        "map" : "Map"}
         self.buttons = {"create pet" : "Create a new pet!", \
                         "get pet" : "See your new pet!", "go to map": "To the map!", \
-                        "map" : ["Cake Game", "Flappy Game", "Feed Pet"],
-                        "back" : "Back", "no pets yet" : "No pets yet :("}
+                        "map" : ["Cake Game", "Feed Pet"],
+                        "back" : "Back", "no pets yet" : "No pets yet :(", \
+                        "food" : ["You have", 0, "cakes, and", 0, "bobas."]}
         self.textboxes = {"name" : "Click and type to name pet!"}
 
         self.categories = ["strawberry", "angora", "axolotl", "seaCucumber", "gown", \
@@ -78,7 +78,17 @@ class Data(object):
         self.petImages = {0 : 'img0.jpeg', 1 : 'img1.jpeg', 2 : 'img2.jpeg', 3: 'img3.jpeg', \
                           4 : 'img4.jpeg', 5 : 'img5.jpeg', 6 : 'img6.jpeg', 7 : 'img7.jpeg', \
                           8 : 'img8.jpeg', 9 : 'img9.jpeg', 10 : 'img10.jpeg', \
-                          11 : 'img11.jpeg', 12 : 'img12.jpeg', 13 : 'img13.jpeg'}
+                          11 : 'img11.jpeg', 12 : 'img12.jpeg', 13 : 'img13.jpeg', \
+                          14 : 'img14.jpeg', 15 : 'img15.jpeg', 16 : 'img16.jpeg', \
+                          17 : 'img17.jpeg', 18 : 'img18.jpeg', 19 : 'img19.jpeg', \
+                          20 : 'img20.jpeg', 21 : 'img21.jpeg', 22 : 'img22.jpeg'
+                          }
+        self.iconImages = {"Cake Game" : 'cakegameicon.png', \
+                           "Feed Pet" : 'feedpeticon.png'}
+
+        # foods
+        self.cakes = 0
+        self.bobas = 0
 
         # colors
         self.transparent = (0, 64, 64, 64)
@@ -143,23 +153,40 @@ class Button(Message):
         else:
             return False
 
-# text box class: see 'code cited' section
+# icon class : like a button but with an image
+class Icon(Button):
+    def __init__(self, msg, location, orientation, mode):
+        super().__init__(msg, location, orientation, mode)
+        self.image = load_image(data.iconImages[self.msg])
+        self.image = pygame.transform.scale(self.image, (200, 200))
+
+    def draw(self):
+        super().draw()
+        self.imagePos = self.rect.midtop
+        self.imageRect = (self.image.get_rect(midbottom = self.imagePos))
+        data.screenSurf.blit(self.image, (self.imageRect.x, self.imageRect.y))
+
+# text box class: updates based on user or game state. see 'code cited' section
 class TextBox(Button):
     def __init__(self, msg, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
         self.text = ""
-        self.textSurf = self.font.render(self.text, 1, data.black)
         self.active = False
-
-        self.desc = "Click and type to name pet! Press enter when you are finished."
+        self.textSurf = self.font.render(self.text, 1, data.black)
+        self.desc = "Click the box and type to name your pet!"
         self.descFont = pygame.font.Font(None, 20)
         self.descSurf = self.descFont.render(self.desc, 1, data.black)
 
     def update(self):
         self.width = max(self.descSurf.get_width() + 10, self.textSurf.get_width() + 10)
+        self.height = self.textSurf.get_height()
         self.rect.width = self.width
 
     def draw(self):
+        self.surface = pygame.surface.Surface((self.width, self.height))
+        self.surface.fill(self.bg)
+        self.textSurf = self.font.render(self.text, 1, data.black)
+        data.screenSurf.blit(self.surface, self.rect)
         data.screenSurf.blit(self.descSurf, (self.rect.x, self.rect.y - 20))
         data.screenSurf.blit(self.textSurf, (self.rect.x, self.rect.y))
         pygame.draw.rect(data.screenSurf, data.black, self.rect, 2)
@@ -177,10 +204,10 @@ class Slider(object):
 
         self.margin = (12, 14)
         self.width, self.height = 300, self.size[1] + 2*self.margin[1]
-        self.x = data.leftX + (self.width * (self.ID // 11)) + (self.margin[0] * (self.ID // 11))
-        self.y = (data.upperY + 90) + (self.ID % 11) * (self.height + self.margin[1])
+        self.x = data.leftX + (self.width * (self.ID // 10)) + (self.margin[0] * (self.ID // 10))
+        self.y = (data.upperY + 90) + (self.ID % 10) * (self.height + self.margin[1])
         self.rect = Rect(self.x, self.y, self.width, self.height)
-        self.buttR = int(self.height / 3)
+        self.buttR = int(self.height / 4)
         self.length = self.width - (2 * self.margin[0])
 
         self.mode = mode
@@ -237,21 +264,30 @@ class Pet(object):
         for trait in self.traits:
             if self.traits[trait] > self.strongest:
                 self.strongest = trait
-        self.desc = "%s most closely resembles the known species %s." \
+        self.desc = "%s 's strongest trait is %s." \
                      % (self.name, data.categories[self.strongest])
 
         # get image based on those traits
         self.speciesID = int(createPet.featureDistance(self.traits))
         self.image = load_image(self.images[self.speciesID])
+        self.image = pygame.transform.smoothscale(self.image, (300, 300))
+        self.medImage = pygame.transform.smoothscale(self.image, (200, 200))
+        self.smImage = pygame.transform.smoothscale(self.image, (150, 150))
         self.ID = ID
 
         # initial position and rect
         self.x = data.centerX
         self.y = data.centerY
         self.pos = (self.x, self.y)
-        self.rect = self.image.get_rect(midbottom = self.pos)
+        self.margin = [25, 25]
+
+        self.rect = self.image.get_rect(center = self.pos)
+        self.smRect = self.smImage.get_rect(center = self.pos)
+        self.medRect = self.medImage.get_rect(center = self.pos)
+
         self.width, self.height = self.rect.width, self.rect.height
-        self.margin = [25, 40]
+        self.smWidth, self.smHeight = self.smRect.width, self.smRect.height
+        self.medWidth, self.medHeight = self.medRect.width, self.medRect.height
 
     def __repr__(self):
         traitlist = []
@@ -272,21 +308,29 @@ class Pet(object):
         self.nameFont = pygame.font.Font(None, self.nameSize)
         self.descFont = pygame.font.Font(None, self.descSize)
 
-        # update pos and text based on mode
+        # update pos, text, image based on mode. pet not shown when mode == 1
         if data.mode == 0:
-            xOffset = int((self.width * 2) + (self.margin[0] * 1.5))
-            yOffset = int((self.height * 2) + (self.margin[1] * 0.5))
-            self.x = data.width//2 - xOffset + (self.width * (self.ID % 4)) + (self.margin[0] * (self.ID % 4))
-            self.y = data.height//2 - yOffset + self.margin[1] + self.ID // 4 * (self.height + self.margin[1])
+            xOffset = int((self.smWidth * 2) + (self.margin[0] * 1.5))
+            yOffset = int((self.smHeight * 2) + (self.margin[1] * 0.5))
+
+            self.x = (data.width//2 - xOffset + (self.smWidth * (self.ID % 4))
+                        + (self.margin[0] * (self.ID % 4)))
+            self.y = (data.height//2 - yOffset + self.margin[1]
+                        + (self.ID // 4) * (self.medHeight))
+
             self.pos = (self.x, self.y)
-        # pet is not shown in mode 1
+            self.rect = self.smImage.get_rect(center = self.pos)
+            data.screenSurf.blit(self.smImage, self.pos)
+
         elif data.mode == 2:
             self.pos = (data.width//2 - self.width//2, data.height//2 - self.height//2)
+            self.rect = self.image.get_rect(center = self.pos)
+            data.screenSurf.blit(self.image, self.pos)
+
         elif data.mode == 3:
             self.pos = (data.leftX, data.lowerY)
-
-        self.rect = self.image.get_rect(center = self.pos)
-        data.screenSurf.blit(self.image, self.pos)
+            self.rect = self.smImage.get_rect(bottomleft = self.pos)
+            data.screenSurf.blit(self.smImage, self.pos)
 
         # display name or not, based on mode
         if data.mode <= 3:
@@ -300,7 +344,7 @@ class Pet(object):
                 data.screenSurf.blit(self.nameSurf, self.nameRect)
 
             elif data.mode == 3:
-                self.nameX = self.pos[0] + (self.rect.width*1.5) + self.margin[0]
+                self.nameX = self.pos[0] + self.rect.width + self.margin[0]
                 self.nameY = self.pos[1]
 
                 self.namePos = (self.nameX, self.nameY)
@@ -363,7 +407,6 @@ def addPet(file, pet):
     petInfo = repr(pet)
     newContents = contents + "__pet__" + petInfo
     writeFile(file, newContents)
-    print("added pet", petInfo, "to", file)
 
 # keep track of pets
 class AllPets(object):
@@ -378,17 +421,18 @@ def main():
     pygame.init()
 
     # load images
-    background = load_image('background.jpg')
+    defaultBG = pygame.transform.scale(load_image('background.jpg'), (1000, 700))
+    mapBG = pygame.transform.scale(load_image('mapbackground.jpg'), (1000, 700))
 
     # display background
-    data.screenSurf.blit(background, (0, 0))
+    #data.screenSurf.blit(background, (0, 0))
     pygame.display.flip()
 
     # create clock to keep track of time
     clock = pygame.time.Clock()
 
     # initialize sprites
-    messages, buttons, backButtons, sliders = [], [], [], []
+    messages, buttons, backButtons, icons, sliders = [], [], [], [], []
 
     # initialize titles, buttons, sliders
     if pygame.font:
@@ -418,15 +462,14 @@ def main():
 
         # mode 3: map
         mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
-        cakeGameButton = Button(data.buttons["map"][0], (data.centerX, data.lowerY), "center", 3)
-        flappyGameButton = Button(data.buttons["map"][1], (data.rightX, data.lowerY + 200), "center", 3)
-        feedPetButton = Button(data.buttons["map"][2], (data.centerX + 400, data.lowerY + 100), "center", 3)
+        cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX + 250, data.lowerY - 400), "center", 3)
+        feedPetIcon = Icon(data.buttons["map"][1], (data.centerX, data.lowerY - 100), "center", 3)
+        #foodMessage = Message(data.buttons["food"], (data.leftX, data.centerY), "topleft", 3)
 
         messages += [choosePetTitle, createPetTitle, showPetTitle, mapTitle, \
                      noPetsYet]
-        buttons += [createPetButton, getPetButton, cakeGameButton, \
-                    flappyGameButton, feedPetButton, goToMapButton, \
-                    nameTextBox]
+        buttons += [createPetButton, getPetButton, goToMapButton, nameTextBox]
+        icons += [cakeGameIcon, feedPetIcon]
         for slider in sliders:
             slider.draw()
 
@@ -435,7 +478,7 @@ def main():
     going = True
     while going:
 
-        clock.tick(60)
+        #clock.tick_busy_loop()
 
         # event queue
         for event in pygame.event.get():
@@ -460,6 +503,7 @@ def main():
                     else:
                         for pet in allPets.petlist:
                             if pet.mouseClick():
+                                print(pet.name, "has been clicked")
                                 allPets.currentPet = pet
                                 data.mode = 2
 
@@ -497,14 +541,12 @@ def main():
 
                 elif event.type == KEYDOWN:
                     # fill name textbox
-                    if event.key == K_RETURN:
-                        allPets.petname = nameTextBox.text
-                    elif event.key == K_BACKSPACE:
+                    if event.key == K_BACKSPACE:
                         if len(nameTextBox.msg) > 0:
                             nameTextBox.text = nameTextBox.text[:-1]
                     else:
                         nameTextBox.text += event.unicode
-                        print(nameTextBox.text)
+                        allPets.petname = nameTextBox.text
 
                 # deactivate sliders
                 elif event.type == MOUSEBUTTONUP:
@@ -522,9 +564,12 @@ def main():
             elif data.mode == 3:
                 if event.type == MOUSEBUTTONDOWN:
                     # cake game button
-                    if cakeGameButton.mouseClick:
+                    if cakeGameIcon.mouseClick:
                         data.mode = 4
-                        cakegame.main(data.petImages[allPets.currentPet.speciesID])
+                        prizes = cakegame.main(data.petImages[allPets.currentPet.speciesID])
+                        data.cakes += prizes[0]
+                        data.bobas += prizes[1]
+                        data.mode = 3
 
         # update sliders
         for slider in sliders:
@@ -535,7 +580,10 @@ def main():
                 button.update()
 
         # draw all sprites
-        data.screenSurf.blit(background, (0, 0))
+        if data.mode == 3:
+            data.screenSurf.blit(mapBG, (0,0))
+        else:
+            data.screenSurf.blit(defaultBG, (0, 0))
 
         for button in buttons:
             if button.mode == data.mode:
@@ -549,6 +597,9 @@ def main():
         for slider in sliders:
             if slider.mode == data.mode:
                 slider.draw()
+        for icon in icons:
+            if data.mode == 3:
+                icon.draw()
         for pet in allPets.petlist:
             if data.mode == 0:
                 pet.draw()
@@ -570,3 +621,7 @@ if __name__ == '__main__':
 # Textboxes: https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
 # Buttons and sliders: https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 # Pygame: https://www.pygame.org/wiki/about
+
+# Images:
+# Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
+# Pet images collected from GANbreeder: ganbreeder.app
