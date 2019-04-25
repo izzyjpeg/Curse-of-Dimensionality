@@ -1,3 +1,5 @@
+### Please see the bottom Bibliography section for code and image citations!
+
 # import everything
 import os, pygame, random, time, sys
 from pygame.locals import *
@@ -83,6 +85,10 @@ class Data(object):
                           17 : 'img17.jpeg', 18 : 'img18.jpeg', 19 : 'img19.jpeg', \
                           20 : 'img20.jpeg', 21 : 'img21.jpeg', 22 : 'img22.jpeg'
                           }
+        self.petImages = {}
+        for i in range(52):
+            self.petImages[i] = 'img' + str(i) + '.jpeg'
+
         self.iconImages = {"Cake Game" : 'cakegameicon.png', \
                            "Feed Pet" : 'feedpeticon.png'}
 
@@ -374,10 +380,13 @@ class Pet(object):
                 data.screenSurf.blit(self.descSurf, self.descRect)
 
     def mouseClick(self):
+
+        self.clickRect= self.smImage.get_rect(topleft = self.pos)
+
         mousePos = pygame.mouse.get_pos()
-        petPos = self.rect
-        if (petPos.left < mousePos[0] < petPos.right) and \
-            (petPos.top < mousePos[1] < petPos.bottom):
+        petRect = self.clickRect
+        if (petRect.left < mousePos[0] < petRect.right) and \
+            (petRect.top < mousePos[1] < petRect.bottom):
                 return True
         else:
             return False
@@ -503,7 +512,6 @@ def main():
                     else:
                         for pet in allPets.petlist:
                             if pet.mouseClick():
-                                print(pet.name, "has been clicked")
                                 allPets.currentPet = pet
                                 data.mode = 2
 
@@ -620,7 +628,7 @@ if __name__ == '__main__':
 # Code cited/taken from other sources:
 # Textboxes: https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
 # Buttons and sliders: https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
-# Pygame: https://www.pygame.org/wiki/about
+# General Pygame: https://www.pygame.org/docs/
 
 # Images:
 # Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
