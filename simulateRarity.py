@@ -1,7 +1,7 @@
-import math
-### switch these two to go back to cluster-y data
-#from speciesDict import speciesDict
-from cachedOrderedSpeciesDict import orderedSpeciesDict as speciesDict
+# Monte Carlo process template came from the 112 website.
+# https://www.cs.cmu.edu/~112/notes/notes-monte-carlo.html
+import random, math
+from speciesDict import speciesDict
 
 categories = ["strawberry", "angora", "axolotl", "seaCucumber", "gown", \
               "persianCat", "hoopskirt", "acorn", "siameseCat", "bathTowel",\
@@ -22,9 +22,6 @@ catNums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 # 10: dough
 # 11: coffeepot
 # 12: screen
-
-examplePet = {0 : 0.8, 1 : 0.8, 2 : 0.2, 3 : 0.1, 4 : 0.4, 5: 0.6, 6: 0.3, \
-              7: 0.8, 8 : 0.4653, 9 : 0.1126, 10 : 0.4220, 11 : 0.0, 12 : 0.0}
 
 # The normalization dict calculates a min and max for each individual category,
 # based on the data we actually have. This ensures that choices the user makes,
@@ -49,7 +46,6 @@ for i in range(len(catNums)):
 
     normalization[i] = [catMin, catMax]
 
-
 def featureDistance(userInput):
     bestSpecies = None
     bestDistance = None
@@ -64,14 +60,6 @@ def featureDistance(userInput):
             catMin = normalization[i][0]
             catMax = normalization[i][1]
 
-            # weights are no longer necessary
-            # angora, persian cat, and siamese cat are less heavily weighted
-            #if (i == 1) or (i == 5) or (i == 8):
-             #   weight = 0.5
-            #elif (i == 0):
-             #   weight = 0.7
-            #else:
-             #   weight = 1.0
             weight = 1.0
 
             userFeature = userInput[category]
@@ -89,3 +77,47 @@ def featureDistance(userInput):
 
     speciesID = (str(bestSpecies).split("sp"))[1]
     return speciesID
+
+# generates a random position for each slider
+def randomPet():
+    pet = {}
+    for i in range(len(catNums)):
+        pet[i] = random.random()
+    return pet
+
+# runs featureDistance (trials) # of times
+def petSim(trials):
+    counts = {}
+    for i in range(len(speciesDict)):
+        counts[i] = 0
+    for trial in range(trials):
+        pet = randomPet()
+        petID = int(featureDistance(pet))
+        counts[petID] += 1
+    return counts
+
+# formats counts as odds
+def petOdds(trials):
+    counts = petSim(trials)
+    odds = {}
+    for petID in counts:
+        odds[petID] = counts[petID] / trials
+    return odds
+
+# alternatively, formats counts for printing
+def showPetSim(trials):
+    counts = petSim(trials)
+    strCounts = ""
+
+    mostCommonPet = None
+    highest = None
+
+    for petID in counts:
+        strCounts += str(petID) + " : " + str(counts[petID]) + "\n"
+        if (highest == None) or (counts[petID] > highest):
+            highest = counts[petID]
+            mostCommonPet = petID
+
+    result =  ("Counts: " + strCounts + "\nMost Common Pet: " \
+                + str(mostCommonPet) + " with " + str(highest) + " hits.")
+    return result

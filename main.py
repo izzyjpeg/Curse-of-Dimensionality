@@ -3,11 +3,9 @@
 # import everything
 import os, pygame, random, time, sys
 from pygame.locals import *
+import createPet, cakegame, simulateRarity
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
-
-import createPet
-import cakegame
 
 # helper functions to read and write files
 def readFile(path):
@@ -30,8 +28,8 @@ def load_images(*files):
 # set up screen and data
 class Data(object):
     def __init__(self):
-        self.screenRect = Rect(0, 0, 1000, 700)
-        self.screenSurf = pygame.display.set_mode((1000, 700))
+        self.screenRect = Rect(0, 0, 1000, 750)
+        self.screenSurf = pygame.display.set_mode((1000, 750))
         self.width = self.screenRect[2]
         self.height = self.screenRect[3]
         self.margin = [25, 25]
@@ -41,30 +39,38 @@ class Data(object):
         self.leftX = self.margin[0]
         self.rightX = self.width - self.margin[1]
         self.upperY = self.margin[1]
+        self.midUpperY = self.upperY + self.height//5
         self.lowerY = self.height - self.margin[1]
         self.centerY = self.height//2
 
         # 0: choosePet, 1: createPet, 2: showPet, 3: map, 4: cakegame,
-        # 5: feed
+        # 5: feed, # 6: edit
         self.mode = 0
+
+        # bg image info
+        self.bgWidth = 1074
+        self.bgX = (self.bgWidth - self.screenRect.width) * (-1)
 
         # title and button info
         self.titles = {"choose pet" : "Which pet will you choose?", \
                        "create pet" : "Create a pet!", \
                        "show pet" : "Here's your pet!", \
-                       "map" : "Map"}
+                       "map" : "Map", "edit pet" : "Edit Pet"}
         self.buttons = {"create pet" : "Create a new pet!", \
                         "get pet" : "See your new pet!", "go to map": "To the map!", \
-                        "map" : ["Cake Game", "Feed Pet"],
+                        "map" : ["Cake Game", "Feed Pet"], \
                         "back" : "Back", "no pets yet" : "No pets yet :(", \
-                        "food" : ["You have", 0, "cakes, and", 0, "bobas."]}
-        self.textboxes = {"name" : "Click and type to name pet!"}
+                        "edit pet" : "Edit Pet", "update pet" : "Update Pet"
+                        }
+        self.textboxes = {"name" : "Click and type to name pet!", \
+                          "food" : "Snack Inventory"}
 
+        # pet creation info
         self.categories = ["strawberry", "angora", "axolotl", "seaCucumber", "gown", \
               "persianCat", "hoopskirt", "acorn", "siameseCat", "bathTowel",\
               "dough", "coffeepot", "screen"]
         self.attributeSliders = {0 : "How much does your pet like fruit?", \
-                                 1 : "How soft and fluffy is your pet?", \
+                                 1 : "How soft and shy is your pet?", \
                                  2 : "How quirky is your pet?", \
                                  3 : "How wet and slippery is your pet?", \
                                  4 : "How fancy and pretty is your pet?", \
@@ -76,15 +82,9 @@ class Data(object):
                                  10 : "How chunky and round is your pet?", \
                                  11 : "How much does your pet like coffee?", \
                                  12 : "How digitally literate is your pet?"}
+        self.rarities = simulateRarity.petOdds(1000)
 
-        self.petImages = {0 : 'img0.jpeg', 1 : 'img1.jpeg', 2 : 'img2.jpeg', 3: 'img3.jpeg', \
-                          4 : 'img4.jpeg', 5 : 'img5.jpeg', 6 : 'img6.jpeg', 7 : 'img7.jpeg', \
-                          8 : 'img8.jpeg', 9 : 'img9.jpeg', 10 : 'img10.jpeg', \
-                          11 : 'img11.jpeg', 12 : 'img12.jpeg', 13 : 'img13.jpeg', \
-                          14 : 'img14.jpeg', 15 : 'img15.jpeg', 16 : 'img16.jpeg', \
-                          17 : 'img17.jpeg', 18 : 'img18.jpeg', 19 : 'img19.jpeg', \
-                          20 : 'img20.jpeg', 21 : 'img21.jpeg', 22 : 'img22.jpeg'
-                          }
+        # list of pet image filenames
         self.petImages = {}
         for i in range(52):
             self.petImages[i] = 'img' + str(i) + '.jpeg'
@@ -95,6 +95,7 @@ class Data(object):
         # foods
         self.cakes = 0
         self.bobas = 0
+        self.foodMessage = "You have " + str(self.cakes) + " cakes and " + str(self.bobas) + " bobas."
 
         # colors
         self.transparent = (0, 64, 64, 64)
@@ -112,9 +113,10 @@ data = Data()
 
 # message class: derived from button class, see 'code cited' section
 class Message(object):
-    def __init__(self, msg, location, orientation, mode, alwaysShown=True):
+    def __init__(self, msg, location, orientation, mode, alwaysShown=True, bg=data.white, fg=data.black):
         self.color = data.white
-        self.bg, self.fg = data.white, data.black
+        self.bg, self.fg = bg, fg
+        self.margin = 10
         self.mode = mode
         self.font = pygame.font.Font(None, 36)
         self.msg = msg
@@ -122,16 +124,25 @@ class Message(object):
         self.alwaysShown = alwaysShown
 
         self.size = self.font.size(self.msg)
+        self.size = (self.size[0] + self.margin, self.size[1] + self.margin)
         self.msgSurf = self.font.render(self.msg, 1, self.fg)
         self.msgRect = self.msgSurf.get_rect(center = [s//2 for s in self.size])
 
         self.surface = pygame.surface.Surface(self.size)
+
         if orientation == "midtop":
             self.rect = self.surface.get_rect(midtop = location)
         elif orientation == "topleft":
             self.rect = self.surface.get_rect(topleft = location)
         elif orientation == "center":
             self.rect = self.surface.get_rect(center = location)
+        elif orientation == "midbottom":
+            self.rect = self.surface.get_rect(midbottom = location)
+        elif orientation == "bottomleft":
+            self.rect = self.surface.get_rect(bottomleft = location)
+        elif orientation == "bottomright":
+            self.rect = self.surface.get_rect(bottomright = location)
+
 
     def draw(self):
         self.surface.fill(self.bg)
@@ -147,14 +158,12 @@ class Button(Message):
         super().draw()
     def mouseover(self):
         self.bg = self.color
-        pos = pygame.mouse.get_pos()
-        if self.rect.collidepoint(pos):
+        mousePos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mousePos):
             self.bg = data.grey
     def mouseClick(self):
         mousePos = pygame.mouse.get_pos()
-        buttonPos = self.rect
-        if (buttonPos.left < mousePos[0] < buttonPos.right) and \
-            (buttonPos.top < mousePos[1] < buttonPos.bottom):
+        if self.rect.collidepoint(mousePos):
                 return True
         else:
             return False
@@ -172,29 +181,44 @@ class Icon(Button):
         self.imageRect = (self.image.get_rect(midbottom = self.imagePos))
         data.screenSurf.blit(self.image, (self.imageRect.x, self.imageRect.y))
 
+        #debugging frames
+        #pygame.draw.rect(data.screenSurf, data.pink, self.rect, 2)
+
+    def mouseClick(self):
+        mousePos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mousePos):
+            return True
+        elif self.imageRect.collidepoint(mousePos):
+            return True
+        else:
+            return False
+
 # text box class: updates based on user or game state. see 'code cited' section
 class TextBox(Button):
-    def __init__(self, msg, location, orientation, mode):
+    def __init__(self, msg, text, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
-        self.text = ""
+        self.text = text
         self.active = False
         self.textSurf = self.font.render(self.text, 1, data.black)
-        self.desc = "Click the box and type to name your pet!"
+        self.desc = msg
         self.descFont = pygame.font.Font(None, 20)
         self.descSurf = self.descFont.render(self.desc, 1, data.black)
 
     def update(self):
-        self.width = max(self.descSurf.get_width() + 10, self.textSurf.get_width() + 10)
-        self.height = self.textSurf.get_height()
+        self.width = max(self.descSurf.get_width() + self.margin, self.textSurf.get_width() + self.margin)
+        self.height = self.size[1]
         self.rect.width = self.width
+        self.surface = pygame.surface.Surface((self.width, self.height))
+
+        self.textX = self.rect.x + self.margin
+        self.textY = self.rect.y + self.height//2 - self.textSurf.get_height()//2
 
     def draw(self):
-        self.surface = pygame.surface.Surface((self.width, self.height))
         self.surface.fill(self.bg)
         self.textSurf = self.font.render(self.text, 1, data.black)
         data.screenSurf.blit(self.surface, self.rect)
         data.screenSurf.blit(self.descSurf, (self.rect.x, self.rect.y - 20))
-        data.screenSurf.blit(self.textSurf, (self.rect.x, self.rect.y))
+        data.screenSurf.blit(self.textSurf, (self.textX, self.textY))
         pygame.draw.rect(data.screenSurf, data.black, self.rect, 2)
 
 # slider class: see 'code cited' section
@@ -211,7 +235,7 @@ class Slider(object):
         self.margin = (12, 14)
         self.width, self.height = 300, self.size[1] + 2*self.margin[1]
         self.x = data.leftX + (self.width * (self.ID // 10)) + (self.margin[0] * (self.ID // 10))
-        self.y = (data.upperY + 90) + (self.ID % 10) * (self.height + self.margin[1])
+        self.y = data.midUpperY + (self.ID % 10) * (self.height + self.margin[1])
         self.rect = Rect(self.x, self.y, self.width, self.height)
         self.buttR = int(self.height / 4)
         self.length = self.width - (2 * self.margin[0])
@@ -235,6 +259,9 @@ class Slider(object):
         self.buttonSurf.set_colorkey(data.trans)
         pygame.draw.circle(self.buttonSurf, data.grey, (self.buttR, self.buttR), self.buttR, 0)
         pygame.draw.circle(self.buttonSurf, data.pink, (self.buttR, self.buttR), self.buttR - 2, 0)
+
+    def __repr__(self):
+        return "__sliderID__" + str(self.ID) + ":" +  str(self.val)
 
     def draw(self):
         surf = self.surf.copy()
@@ -266,12 +293,6 @@ class Pet(object):
         # individual pet characteristics
         self.name = name
         self.traits = traits
-        self.strongest = 0.0
-        for trait in self.traits:
-            if self.traits[trait] > self.strongest:
-                self.strongest = trait
-        self.desc = "%s 's strongest trait is %s." \
-                     % (self.name, data.categories[self.strongest])
 
         # get image based on those traits
         self.speciesID = int(createPet.featureDistance(self.traits))
@@ -280,6 +301,11 @@ class Pet(object):
         self.medImage = pygame.transform.smoothscale(self.image, (200, 200))
         self.smImage = pygame.transform.smoothscale(self.image, (150, 150))
         self.ID = ID
+
+        # get rarity
+        self.rarity = data.rarities[self.speciesID]
+        self.desc = "Pets like %s have a rarity index of %f." \
+                     % (self.name, self.rarity)
 
         # initial position and rect
         self.x = data.centerX
@@ -290,10 +316,12 @@ class Pet(object):
         self.rect = self.image.get_rect(center = self.pos)
         self.smRect = self.smImage.get_rect(center = self.pos)
         self.medRect = self.medImage.get_rect(center = self.pos)
-
         self.width, self.height = self.rect.width, self.rect.height
         self.smWidth, self.smHeight = self.smRect.width, self.smRect.height
         self.medWidth, self.medHeight = self.medRect.width, self.medRect.height
+
+        self.fg = data.white
+        self.bg = data.white
 
     def __repr__(self):
         traitlist = []
@@ -325,17 +353,17 @@ class Pet(object):
                         + (self.ID // 4) * (self.medHeight))
 
             self.pos = (self.x, self.y)
-            self.rect = self.smImage.get_rect(center = self.pos)
+            self.rect = self.smImage.get_rect(topleft = self.pos)
             data.screenSurf.blit(self.smImage, self.pos)
 
         elif data.mode == 2:
             self.pos = (data.width//2 - self.width//2, data.height//2 - self.height//2)
-            self.rect = self.image.get_rect(center = self.pos)
+            self.rect = self.image.get_rect(topleft = self.pos)
             data.screenSurf.blit(self.image, self.pos)
 
         elif data.mode == 3:
-            self.pos = (data.leftX, data.lowerY)
-            self.rect = self.smImage.get_rect(bottomleft = self.pos)
+            self.pos = (data.leftX, data.lowerY - self.smHeight)
+            self.rect = self.smImage.get_rect(topleft = self.pos)
             data.screenSurf.blit(self.smImage, self.pos)
 
         # display name or not, based on mode
@@ -345,7 +373,7 @@ class Pet(object):
                 self.nameY = self.pos[1] + self.rect.height + self.margin[1]//4
 
                 self.namePos = (self.nameX, self.nameY)
-                self.nameSurf = self.nameFont.render(self.name, 1, data.black)
+                self.nameSurf = self.nameFont.render(self.name, 1, self.fg)
                 self.nameRect = self.nameSurf.get_rect(midtop = self.namePos)
                 data.screenSurf.blit(self.nameSurf, self.nameRect)
 
@@ -354,7 +382,7 @@ class Pet(object):
                 self.nameY = self.pos[1]
 
                 self.namePos = (self.nameX, self.nameY)
-                self.nameSurf = self.nameFont.render(self.name, 1, data.black)
+                self.nameSurf = self.nameFont.render(self.name, 1, self.fg)
                 self.nameRect = self.nameSurf.get_rect(topleft = self.namePos)
                 data.screenSurf.blit(self.nameSurf, self.nameRect)
 
@@ -366,7 +394,7 @@ class Pet(object):
                 self.descY = self.nameY + self.margin[1]
 
                 self.descPos = (self.descX, self.descY)
-                self.descSurf = self.descFont.render(self.desc, 1, data.black)
+                self.descSurf = self.descFont.render(self.desc, 1, self.fg)
                 self.descRect = self.descSurf.get_rect(midtop = self.descPos)
                 data.screenSurf.blit(self.descSurf, self.descRect)
 
@@ -375,16 +403,13 @@ class Pet(object):
                 self.descY = self.nameY + self.margin[1]
 
                 self.descPos = (self.descX, self.descY)
-                self.descSurf = self.descFont.render(self.desc, 1, data.black)
+                self.descSurf = self.descFont.render(self.desc, 1, self.fg)
                 self.descRect = self.descSurf.get_rect(topleft = self.descPos)
                 data.screenSurf.blit(self.descSurf, self.descRect)
 
     def mouseClick(self):
-
-        self.clickRect= self.smImage.get_rect(topleft = self.pos)
-
         mousePos = pygame.mouse.get_pos()
-        petRect = self.clickRect
+        petRect = self.rect
         if (petRect.left < mousePos[0] < petRect.right) and \
             (petRect.top < mousePos[1] < petRect.bottom):
                 return True
@@ -398,7 +423,8 @@ def getPets(file):
         return set()
     pets = set()
 
-    for pet in contents.split("__pet__")[1:]:
+    listContents = contents.split("__pet__")[1:]
+    for pet in listContents:
         name = pet[pet.index("__name__")+8:pet.index("__ID__")]
         ID = int(pet[pet.index("__ID__")+6:pet.index("__traits__")])
         traitlist = pet[pet.index("__traits__")+10:]
@@ -412,9 +438,63 @@ def getPets(file):
 
 # and to write it
 def addPet(file, pet):
-    contents = readFile(file)
     petInfo = repr(pet)
+    contents = readFile(file)
     newContents = contents + "__pet__" + petInfo
+    writeFile(file, newContents)
+
+# edit an existing pet
+def editPet(file, newPet):
+    newPetInfo = "__pet__" + repr(newPet)
+    contents = readFile(file)
+    listContents = contents.split("__pet__")[1:]
+
+    newContents = ""
+    for i in range(len(listContents)):
+        petInfo = "__pet__" + listContents[i]
+        if i == newPet.ID:
+            newContents += newPetInfo
+        else:
+            newContents += petInfo
+
+    writeFile(file, newContents)
+
+# read the petSlider file
+def getSliders(file):
+    contents = readFile(file)
+    if len(contents) < 2:
+        return {}
+    result = {}
+    listContents = contents.split("__petID__")[1:]
+    petID = 0
+    for sliderSet in listContents:
+        sliders = {}
+        for slider in sliderSet.split("__sliderID__")[1:]:
+            i = slider.index(":")
+            key, value = int(slider[:i]), float(slider[i + 1:])
+            sliders[key] = value
+        result[petID] = sliders
+        petID += 1
+    return result
+
+# add a new pet's slider values to the petSlider file
+def addSlider(file, currPetSliders):
+    contents = readFile(file)
+    newContents = contents + "__petID__" + currPetSliders
+    writeFile(file, newContents)
+
+# edit a pet's slider values in the petSlider file
+def editSlider(file, newSliders, petID):
+    newSliders = "__petID__" + newSliders
+    contents = readFile(file)
+    listContents = contents.split("__petID__")[1:]
+    newContents = ""
+    for i in range(len(listContents)):
+        sliderInfo = "__petID__" + listContents[i]
+        if i == petID:
+            newContents += newSliders
+        else:
+            newContents += sliderInfo
     writeFile(file, newContents)
 
 # keep track of pets
@@ -423,31 +503,34 @@ class AllPets(object):
         self.petlist = getPets("pets.txt")
         self.currentPet = None
         self.petname = ""
+        # sliders set to these values when editing pet
+        self.sliderCache = getSliders("petSliders.txt")
 allPets = AllPets()
 
 # main game function
 def main():
     pygame.init()
 
-    # load images
-    defaultBG = pygame.transform.scale(load_image('background.jpg'), (1000, 700))
-    mapBG = pygame.transform.scale(load_image('mapbackground.jpg'), (1000, 700))
+    # load BG images
+    loadingBG = pygame.transform.scale(load_image('loadingBG.png'), (1074, data.screenRect.height))
+    defaultBG = pygame.transform.scale(load_image('background.jpg'), (1074, data.screenRect.height))
+    mapBG = pygame.transform.scale(load_image('mapbackground.jpg'), (1074, data.screenRect.height))
 
-    # display background
-    #data.screenSurf.blit(background, (0, 0))
+    # LOADING SCREEN
+    data.screenSurf.blit(loadingBG, (data.bgX, 0))
     pygame.display.flip()
 
     # create clock to keep track of time
     clock = pygame.time.Clock()
 
     # initialize sprites
-    messages, buttons, backButtons, icons, sliders = [], [], [], [], []
+    messages, buttons, backButtons, icons, sliders, editSliders = [], [], [], [], [], []
 
     # initialize titles, buttons, sliders
     if pygame.font:
 
         # all back buttons
-        for i in range(1, 6):
+        for i in range(1, 7):
             backButton = Button(data.buttons["back"], (data.leftX, data.upperY), "topleft", i)
             buttons += [backButton]
             backButtons += [backButton]
@@ -455,31 +538,44 @@ def main():
         # mode 0: choose pet
         choosePetTitle = Message(data.titles["choose pet"], (data.centerX, data.upperY), "midtop", 0)
         noPetsYet = Message(data.buttons["no pets yet"], (data.centerX, data.upperY + 100), "center", 0, False)
-        createPetButton = Button(data.buttons["create pet"], (data.centerX, data.lowerY), "center", 0)
+        createPetButton = Button(data.buttons["create pet"], (data.centerX, data.lowerY), "midbottom", 0)
 
         # mode 1: create pet
         createPetTitle = Message(data.titles["create pet"], (data.centerX, data.upperY), "midtop", 1)
-        nameTextBox = TextBox(data.textboxes["name"], (data.leftX, data.upperY + 50), "topleft", 1)
-        getPetButton = Button(data.buttons["get pet"], (data.centerX, data.lowerY), "center", 1)
+        nameTextBox = TextBox(data.textboxes["name"], "", (data.leftX, data.midUpperY - 20), "bottomleft", 1)
+        getPetButton = Button(data.buttons["get pet"], (data.centerX, data.lowerY), "midbottom", 1)
         for i in range(len(data.categories)):
             slider = Slider(i, data.attributeSliders[i], 50, 100, 0, data.leftX, 1)
             sliders += [slider]
 
+        # mode 6: edit pet
+        editPetTitle = Message(data.titles["edit pet"], (data.centerX, data.upperY), "midtop", 6)
+        changeNameTextBox = TextBox(data.textboxes["name"], "", (data.leftX, data.midUpperY - 20), "bottomleft", 6)
+        updatePetButton = Button(data.buttons["update pet"], (data.centerX, data.lowerY), "midbottom", 6)
+        for i in range(len(data.categories)):
+            slider = Slider(i, data.attributeSliders[i], 50, 100, 0, data.leftX, 6)
+            editSliders += [slider]
+
         # mode 2: show pet
         showPetTitle = Message(data.titles["show pet"], (data.centerX, data.upperY), "midtop", 2)
-        goToMapButton = Button(data.buttons["go to map"], (data.centerX, data.lowerY), "center", 2)
+        goToMapButton = Button(data.buttons["go to map"], (data.centerX + 100, data.lowerY), "bottomleft", 2)
+        editPetButton = Button(data.buttons["edit pet"], (data.centerX - 100, data.lowerY), "bottomright", 2)
 
         # mode 3: map
         mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
         cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX + 250, data.lowerY - 400), "center", 3)
         feedPetIcon = Icon(data.buttons["map"][1], (data.centerX, data.lowerY - 100), "center", 3)
-        #foodMessage = Message(data.buttons["food"], (data.leftX, data.centerY), "topleft", 3)
+        foodTextBox = TextBox(data.textboxes["food"], data.foodMessage, (data.leftX, data.centerY), "topleft", 3)
 
         messages += [choosePetTitle, createPetTitle, showPetTitle, mapTitle, \
-                     noPetsYet]
-        buttons += [createPetButton, getPetButton, goToMapButton, nameTextBox]
+                     noPetsYet, editPetTitle]
+        buttons += [createPetButton, getPetButton, goToMapButton, nameTextBox, \
+                    foodTextBox, editPetButton, updatePetButton, \
+                    changeNameTextBox]
         icons += [cakeGameIcon, feedPetIcon]
         for slider in sliders:
+            slider.draw()
+        for slider in editSliders:
             slider.draw()
 
 ### Game Loop ###
@@ -520,12 +616,20 @@ def main():
                 if event.type == MOUSEBUTTONDOWN:
                     # get pet button
                     if getPetButton.mouseClick():
+                        ID = len(allPets.petlist)
+                        # read sliders
                         traits = {}
+                        currPetSliders = ""
                         for slider in sliders:
+                            currPetSliders += repr(slider)
                             traits[slider.ID] = slider.getDecimal()
+                            # reset sliders
+                            slider.val = slider.max//2
+                        # add pet's sliders to slider cache
+                        addSlider('petSliders.txt', currPetSliders)
+                        allPets.sliderCache = getSliders('petSliders.txt')
 
                         # add pet (they are stored in a file)
-                        ID = len(allPets.petlist)
                         if len(allPets.petname) == 0:
                             name = "no name"
                         else:
@@ -534,6 +638,10 @@ def main():
                         addPet('pets.txt', pet)
                         allPets.petlist = getPets('pets.txt')
                         allPets.currentPet = pet
+
+                        # reset name
+                        allPets.petname = ""
+                        nameTextBox.text = ""
 
                         data.mode = 2
 
@@ -561,26 +669,101 @@ def main():
                     for slider in sliders:
                         slider.hit = False
 
-            # SHOW PET SCREEN
+            # 2. SHOW PET SCREEN
             elif data.mode == 2:
                 if event.type == MOUSEBUTTONDOWN:
                     # go to map button
                     if goToMapButton.mouseClick():
                         data.mode = 3
+                    # edit pet button
+                    elif editPetButton.mouseClick():
+                        data.mode = 6
+                        changeNameTextBox.text = allPets.currentPet.name
+                        allPets.petname = changeNameTextBox.text
+                        sliderVals = allPets.sliderCache[allPets.currentPet.ID]
+                        for slider in editSliders:
+                            slider.val = sliderVals[slider.ID]
 
-            # MAP SCREEN
+            # 3. MAP SCREEN
             elif data.mode == 3:
                 if event.type == MOUSEBUTTONDOWN:
+                    # show pet
+                    if allPets.currentPet.mouseClick():
+                        data.mode = 2
                     # cake game button
-                    if cakeGameIcon.mouseClick:
+                    elif cakeGameIcon.mouseClick():
                         data.mode = 4
                         prizes = cakegame.main(data.petImages[allPets.currentPet.speciesID])
                         data.cakes += prizes[0]
                         data.bobas += prizes[1]
+                        foodTextBox.text = "You have " + str(data.cakes) + " cakes and " + str(data.bobas) + " bobas."
                         data.mode = 3
+
+            # 6. EDIT PET SCREEN
+            elif data.mode == 6:
+                if event.type == MOUSEBUTTONDOWN:
+                    # update pet button
+                    if updatePetButton.mouseClick():
+
+                        traits = {}
+                        newPetSliders = ""
+                        for slider in editSliders:
+                            traits[slider.ID] = slider.getDecimal()
+                            newPetSliders += repr(slider)
+                            # reset edit sliders
+                            slider.val = slider.max//2
+                        ID = allPets.currentPet.ID
+                        # update slider cache
+                        editSlider('petSliders.txt', newPetSliders, ID)
+                        allPets.sliderCache = getSliders('petSliders.txt')
+
+                        # edit pet
+                        if len(allPets.petname) == 0:
+                            name = "no name"
+                        else:
+                            name = allPets.petname
+                        newPet = Pet(name, ID, traits)
+                        editPet('pets.txt', newPet)
+
+                        allPets.petlist = getPets('pets.txt')
+                        allPets.currentPet = newPet
+
+                        # reset name
+                        allPets.petname = ""
+                        nameTextBox.text = ""
+
+                        data.mode = 2
+
+                    # activate the change name textbox
+                    elif changeNameTextBox.mouseClick():
+                        changeNameTextBox.active = not changeNameTextBox.active
+
+                    # activate sliders
+                    pos = pygame.mouse.get_pos()
+                    for slider in editSliders:
+                        if slider.buttonRect.collidepoint(pos):
+                            slider.hit = True
+
+                elif event.type == KEYDOWN:
+                    # fill the change name textbox
+                    allPets.petname = changeNameTextBox.text
+                    if event.key == K_BACKSPACE:
+                        if len(nameTextBox.msg) > 0:
+                            changeNameTextBox.text = changeNameTextBox.text[:-1]
+                    else:
+                        changeNameTextBox.text += event.unicode
+                        allPets.petname = changeNameTextBox.text
+
+                # deactivate edit sliders
+                elif event.type == MOUSEBUTTONUP:
+                    for slider in editSliders:
+                        slider.hit = False
 
         # update sliders
         for slider in sliders:
+            if slider.hit:
+                slider.move()
+        for slider in editSliders:
             if slider.hit:
                 slider.move()
         for button in buttons:
@@ -589,9 +772,9 @@ def main():
 
         # draw all sprites
         if data.mode == 3:
-            data.screenSurf.blit(mapBG, (0,0))
+            data.screenSurf.blit(mapBG, (data.bgX, 0))
         else:
-            data.screenSurf.blit(defaultBG, (0, 0))
+            data.screenSurf.blit(defaultBG, (data.bgX, 0))
 
         for button in buttons:
             if button.mode == data.mode:
@@ -605,20 +788,20 @@ def main():
         for slider in sliders:
             if slider.mode == data.mode:
                 slider.draw()
+        for slider in editSliders:
+            if slider.mode == data.mode:
+                slider.draw()
         for icon in icons:
             if data.mode == 3:
                 icon.draw()
         for pet in allPets.petlist:
             if data.mode == 0:
                 pet.draw()
-            elif (pet == allPets.currentPet) and (data.mode != 1):
+            elif (pet == allPets.currentPet) and (data.mode != 1) and (data.mode != 6):
                 pet.draw()
 
         pygame.display.flip()
-
     pygame.quit()
-    # TEMPORARY clear pet list upon closing pygame window
-    writeFile("pets.txt", "")
     sys.exit()
 
 if __name__ == '__main__':
