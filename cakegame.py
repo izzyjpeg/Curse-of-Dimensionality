@@ -389,7 +389,6 @@ def main(petImg):
         
         # event queue
         for event in pygame.event.get():
-            print(event)
             if event.type == QUIT:
                 going = False
                 
@@ -558,10 +557,8 @@ def main(petImg):
         pygame.display.flip()
         
     # end of loop
-    print("left loop")
     pygame.quit()
     sys.exit()
 
 if __name__ == '__main__':
-    print("running through main")
     main()

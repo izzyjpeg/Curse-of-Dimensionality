@@ -103,9 +103,9 @@ class Data(object):
                            pygame.transform.smoothscale(load_image('donut.png'), (200, 200))]
 
         # foods
-        self.cakes = 0
-        self.bobas = 0
-        self.donuts = 0
+        self.cakes = 1
+        self.bobas = 1
+        self.donuts = 1
         self.foodMessage = "You don't have any food yet! Play the Cake Game to get some."
         self.notEnoughFoods = False
 
@@ -342,6 +342,7 @@ class Slider(object):
 class Food(object):
     def __init__(self, type, startPos):
         # types: 0 = cake, 1 = boba, 2 = donut
+        self.type = type
         self.image = data.foodImages[type]
         self.startPos = startPos
         self.rect = self.image.get_rect()
@@ -803,31 +804,93 @@ def main():
             # 5. FEED PET SCREEN
             elif data.mode == 5:
                 if event.type == MOUSEBUTTONDOWN:
-                    if feedCakeButton.mouseClick():
-                        if data.cakes < 1:
-                            data.notEnoughFoods = True
-                        else:
-                            cake = Food(0, data.foodStartPos)
-                            foods.add(cake)
-                    elif feedBobaButton.mouseClick():
-                        if data.bobas < 1:
-                            data.notEnoughFoods = True
-                        else:
-                            boba = Food(1, data.foodStartPos)
-                            foods.add(boba)
-                    elif feedDonutButton.mouseClick():
-                        if data.donuts < 1:
-                            data.notEnoughFoods = True
-                        else:
-                            donut = Food(2, data.foodStartPos)
-                            foods.add(donut)
+                    if (feedCakeButton.mouseClick() or
+                        feedBobaButton.mouseClick() or feedDonutButton.mouseClick()):
+
+                        # feed pet cake
+                        if feedCakeButton.mouseClick():
+                            if data.cakes < 1:
+                                data.notEnoughFoods = True
+                            else:
+                                cake = Food(0, data.foodStartPos)
+                                foods.add(cake)
+
+                        # feed pet boba
+                        elif feedBobaButton.mouseClick():
+                            if data.bobas < 1:
+                                data.notEnoughFoods = True
+                            else:
+                                boba = Food(1, data.foodStartPos)
+                                foods.add(boba)
+
+                        # feed pet donut
+                        elif feedDonutButton.mouseClick():
+                            if data.donuts < 1:
+                                data.notEnoughFoods = True
+                            else:
+                                donut = Food(2, data.foodStartPos)
+                                foods.add(donut)
+
                     for food in foods:
                         if food.mouseClick():
                             food.active = True
+
                 elif event.type == MOUSEBUTTONUP:
                     for food in foods:
+                        # the food item that is active
                         if food.mouseClick():
                             food.active = False
+
+                            if food.type == 0:
+                                # feeding your pet CAKE:
+                                # increases (strawberry, angora, axolotl, sea cucumber)
+                                # decreases (gown, persian cat, hoopskirt, acorn, siamese cat)
+                                traits = allPets.currentPet.traits
+                                addTraits = (0, 1, 2, 3)
+                                subtractTraits = (4, 5, 6, 7, 8)
+                                for trait in traits:
+                                    if trait in addTraits:
+                                        traits[trait] = min(traits[trait] * 1.1, 0.99)
+                                    elif trait in subtractTraits:
+                                        traits[trait] = max(traits[trait] * 0.9, 0.0)
+                            elif food.type == 1:
+                                # feeding your pet BOBA:
+                                # increases (gown, persian cat, hoopskirt, acorn, siamese cat)
+                                # decreases (bath towel, dough, coffeepot, screen)
+                                traits = allPets.currentPet.traits
+                                addTraits = (4, 5, 6, 7, 8)
+                                subtractTraits = (9, 10, 11, 12)
+                                for trait in traits:
+                                    if trait in addTraits:
+                                        traits[trait] = min(traits[trait] * 1.1, 0.99)
+                                    elif trait in subtractTraits:
+                                        traits[trait] = max(traits[trait] * 0.9, 0.0)
+                            elif food.type == 2:
+                                # feeding your pet DONUTS:
+                                # increases (bath towel, dough, coffeepot, screen)
+                                # decreases (strawberry, angora, axolotl, sea cucumber)
+                                traits = allPets.currentPet.traits
+                                addTraits = (9, 10, 11, 12)
+                                subtractTraits = (0, 1, 2, 3)
+                                for trait in traits:
+                                    if trait in addTraits:
+                                        traits[trait] = min(traits[trait] * 1.4, 0.99)
+                                    elif trait in subtractTraits:
+                                        traits[trait] = max(traits[trait] * 0.6, 0.0)
+
+                            # update pet with new traits
+                            newPet = Pet(allPets.currentPet.name, allPets.currentPet.ID, traits)
+                            editPet('pets.txt', newPet)
+                            allPets.petlist = getPets('pets.txt')
+                            allPets.currentPet = newPet
+
+                            # update pet's sliders
+                            newPetSliders = ""
+                            for trait in traits:
+                                fauxSlider = "__sliderID__" + str(trait) + ":" +  str((traits[trait] * 100))
+                                newPetSliders += fauxSlider
+                            editSlider('petSliders.txt', newPetSliders, allPets.currentPet.ID)
+                            allPets.sliderCache = getSliders('petSliders.txt')
 
             # 6. EDIT PET SCREEN
             elif data.mode == 6:
