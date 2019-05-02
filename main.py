@@ -42,11 +42,11 @@ class Data(object):
         self.midUpperY = self.upperY + self.height//5
         self.lowerY = self.height - self.margin[1]
         self.centerY = self.height//2
-        self.foodStartPos = (self.leftX + 50, self.lowerY - 100)
+        self.foodStartPos = (self.leftX + 110, self.lowerY - 80)
 
         # 0: choosePet, 1: createPet, 2: showPet, 3: map, 4: cakegame,
         # 5: feed, # 6: edit
-        self.mode = 0
+        self.mode = -1
 
         # bg image info
         self.bgWidth = 1074
@@ -65,7 +65,8 @@ class Data(object):
                         "back" : "Back", "no pets yet" : "No pets yet :(", \
                         "edit pet" : "Edit Pet", "update pet" : "Update Pet", \
                         "feed cake" : "Give pet cake!", "feed boba" : "Give pet boba!", \
-                        "feed donut" : "Give pet a donut!"
+                        "feed donut" : "Give pet a donut!", \
+                        "play game" : "  Play Game  "
                         }
         self.textboxes = {"name" : "Click and type to name pet!", \
                           "food" : "Snack Inventory"}
@@ -95,7 +96,7 @@ class Data(object):
         self.petImages = {}
         for i in range(52):
             self.petImages[i] = 'img' + str(i) + '.jpeg'
-        self.iconImages = {"Cake Game" : 'cakegameicon.png', \
+        self.iconImages = {"Cake Game" : 'cake.png', \
                            "Feed Pet" : 'feedpeticon.png'}
         self.petIcon = pygame.transform.scale(load_image(self.petImages[0]), (32, 32))
         self.foodImages = [pygame.transform.smoothscale(load_image('cake.png'), (150, 150)), \
@@ -103,10 +104,13 @@ class Data(object):
                            pygame.transform.smoothscale(load_image('donut.png'), (200, 200))]
 
         # foods
-        self.cakes = 1
-        self.bobas = 1
-        self.donuts = 1
-        self.foodMessage = "You don't have any food yet! Play the Cake Game to get some."
+        self.cakes = 0
+        self.bobas = 0
+        self.donuts = 0
+        self.noFoodMessage = "You don't have any food yet! Play the Cake Game to get some."
+        self.foodMessage = ["You have ", str(self.cakes), " cakes, ",
+                            str(self.bobas), " bobas, and ", str(self.donuts),
+                            " donuts."]
         self.notEnoughFoods = False
 
         # colors
@@ -162,7 +166,13 @@ class Message(object):
         self.margin = 10
         self.mode = mode
         self.font = pygame.font.Font(None, 36)
-        self.msg = msg
+
+        if isinstance(msg, str):
+            self.msg = msg
+        else:
+            self.msg = ""
+            for c in msg:
+                self.msg += str(c)
 
         self.alwaysShown = alwaysShown
 
@@ -246,7 +256,12 @@ class Icon(Button):
 class TextBox(Button):
     def __init__(self, msg, text, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
-        self.text = text
+        if isinstance(text, str):
+            self.text = text
+        else:
+            self.text = ""
+            for c in text:
+                self.text += str(c)
         self.active = False
         self.textSurf = self.font.render(self.text, 1, data.black)
         self.desc = data.tbDescs[msg]
@@ -268,6 +283,12 @@ class TextBox(Button):
         self.surface = roundedRect(self.surface, self.roundRect, data.white)
         if self.text == "":
             self.surface.blit(self.msgSurf, self.msgPos)
+        elif not isinstance(self.text, str):
+            self.newText = ""
+            for c in self.text:
+                self.newText += str(c)
+            self.text = self.newText
+
         data.screenSurf.blit(self.surface, self.roundRect)
         self.textSurf = self.font.render(self.text, 1, data.black)
         data.screenSurf.blit(self.descSurf, (self.rect.x, self.rect.y - 20))
@@ -342,7 +363,6 @@ class Slider(object):
 class Food(object):
     def __init__(self, type, startPos):
         # types: 0 = cake, 1 = boba, 2 = donut
-        self.type = type
         self.image = data.foodImages[type]
         self.startPos = startPos
         self.rect = self.image.get_rect()
@@ -592,7 +612,9 @@ def main():
     # load BG images
     loadingBG = pygame.transform.smoothscale(load_image('loadingBG.png'), (1074, data.screenRect.height))
     defaultBG = pygame.transform.smoothscale(load_image('background.jpg'), (1074, data.screenRect.height))
-    mapBG = pygame.transform.smoothscale(load_image('mapbackground.jpg'), (1074, data.screenRect.height))
+    mapBG = pygame.transform.smoothscale(load_image('mapBG.jpg'), (1074, data.screenRect.height))
+    cafeBG = pygame.transform.smoothscale(load_image('cafeBG.png'), (1074, data.screenRect.height))
+    titleBG = load_image('titleBG.png')
 
     # make the game window fancy!
     pygame.display.set_icon(data.petIcon)
@@ -617,6 +639,9 @@ def main():
             backButton = Button(data.buttons["back"], (data.leftX, data.upperY), "topleft", i)
             buttons += [backButton]
             backButtons += [backButton]
+
+        # mode -1: title screen
+        playGameButton = Button(data.buttons["play game"], (data.rightX - 70, data.lowerY - 40), "bottomright", -1)
 
         # mode 0: choose pet
         choosePetTitle = Message(data.titles["choose pet"], (data.centerX, data.upperY), "midtop", 0)
@@ -648,11 +673,11 @@ def main():
         mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
         cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX + 250, data.lowerY - 400), "center", 3)
         feedPetIcon = Icon(data.buttons["map"][1], (data.centerX, data.lowerY - 100), "center", 3)
-        foodTextBox = TextBox(data.textboxes["food"], data.foodMessage, (data.leftX, data.centerY), "topleft", 3)
+        foodTextBox = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.centerY), "topleft", 3)
 
         # mode 5: feed pet
         feedPetTitle = Message(data.titles["feed pet"], (data.centerX, data.upperY), "midtop", 5)
-        foodTextBox2 = TextBox(data.textboxes["food"], data.foodMessage, (data.leftX, data.upperY + 100), "topleft", 5)
+        foodTextBox2 = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.upperY + 100), "topleft", 5)
         feedCakeButton = Button(data.buttons["feed cake"], (data.centerX - 200, data.lowerY), "bottomright", 5)
         feedBobaButton = Button(data.buttons["feed boba"], (data.centerX, data.lowerY), "midbottom", 5)
         feedDonutButton = Button(data.buttons["feed donut"], (data.centerX + 200, data.lowerY), "bottomleft", 5)
@@ -675,9 +700,7 @@ def main():
     going = True
     while going:
 
-        #clock.tick_busy_loop()
-
-        # event queue
+        ### EVENT QUEUE
         for event in pygame.event.get():
             if event.type == QUIT:
                 going = False
@@ -692,8 +715,14 @@ def main():
                     else:
                         data.mode = 2
 
+            # INTRO SCREEN
+            if data.mode == -1:
+                if event.type == MOUSEBUTTONDOWN:
+                    if playGameButton.mouseClick():
+                        data.mode = 0
+
             # CHOOSE PET SCREEN
-            if data.mode == 0:
+            elif data.mode == 0:
                 if event.type == MOUSEBUTTONDOWN:
                     # user wants to create a new pet
                     if createPetButton.mouseClick():
@@ -792,13 +821,24 @@ def main():
                         data.cakes += prizes[0]
                         data.bobas += prizes[1]
                         data.donuts += prizes[2]
-                        foodTextBox.text = ("You have " + str(data.cakes) + \
-                                           " cakes, " + str(data.bobas) + \
-                                           " bobas, and " + str(data.donuts) + \
-                                           " donuts.")
+                        if data.cakes == 1:
+                            data.foodMessage[2] == " cake, "
+                        else:
+                            data.foodMessage[2] == " cakes, "
+                        if data.bobas == 1:
+                            data.foodMessage[4] == " boba, and "
+                        else:
+                            data.foodMessage[4] == " bobas, and "
+                        if data.donuts == 1:
+                            data.foodMessage[6] == " donut, and "
+                        else:
+                            data.foodMessage[6] == " donuts, and "
+
+                        foodTextBox.text = data.foodMessage
                         data.mode = 3
                     # feed pet button
                     elif feedPetIcon.mouseClick():
+                        foodTextBox2.text = data.foodMessage
                         data.mode = 5
 
             # 5. FEED PET SCREEN
@@ -807,41 +847,14 @@ def main():
                     if (feedCakeButton.mouseClick() or
                         feedBobaButton.mouseClick() or feedDonutButton.mouseClick()):
 
+
                         # feed pet cake
                         if feedCakeButton.mouseClick():
                             if data.cakes < 1:
                                 data.notEnoughFoods = True
-                            else:
+                            elif data.cakes >= 1:
                                 cake = Food(0, data.foodStartPos)
                                 foods.add(cake)
-
-                        # feed pet boba
-                        elif feedBobaButton.mouseClick():
-                            if data.bobas < 1:
-                                data.notEnoughFoods = True
-                            else:
-                                boba = Food(1, data.foodStartPos)
-                                foods.add(boba)
-
-                        # feed pet donut
-                        elif feedDonutButton.mouseClick():
-                            if data.donuts < 1:
-                                data.notEnoughFoods = True
-                            else:
-                                donut = Food(2, data.foodStartPos)
-                                foods.add(donut)
-
-                    for food in foods:
-                        if food.mouseClick():
-                            food.active = True
-
-                elif event.type == MOUSEBUTTONUP:
-                    for food in foods:
-                        # the food item that is active
-                        if food.mouseClick():
-                            food.active = False
-
-                            if food.type == 0:
                                 # feeding your pet CAKE:
                                 # increases (strawberry, angora, axolotl, sea cucumber)
                                 # decreases (gown, persian cat, hoopskirt, acorn, siamese cat)
@@ -853,7 +866,15 @@ def main():
                                         traits[trait] = min(traits[trait] * 1.1, 0.99)
                                     elif trait in subtractTraits:
                                         traits[trait] = max(traits[trait] * 0.9, 0.0)
-                            elif food.type == 1:
+                                data.cakes -= 1
+
+                        # feed pet boba
+                        elif feedBobaButton.mouseClick():
+                            if data.bobas < 1:
+                                data.notEnoughFoods = True
+                            elif data.bobas >= 1:
+                                boba = Food(1, data.foodStartPos)
+                                foods.add(boba)
                                 # feeding your pet BOBA:
                                 # increases (gown, persian cat, hoopskirt, acorn, siamese cat)
                                 # decreases (bath towel, dough, coffeepot, screen)
@@ -865,7 +886,15 @@ def main():
                                         traits[trait] = min(traits[trait] * 1.1, 0.99)
                                     elif trait in subtractTraits:
                                         traits[trait] = max(traits[trait] * 0.9, 0.0)
-                            elif food.type == 2:
+                                data.bobas -= 1
+
+                        # feed pet donut
+                        elif feedDonutButton.mouseClick():
+                            if data.donuts < 1:
+                                data.notEnoughFoods = True
+                            elif data.donuts >= 1:
+                                donut = Food(2, data.foodStartPos)
+                                foods.add(donut)
                                 # feeding your pet DONUTS:
                                 # increases (bath towel, dough, coffeepot, screen)
                                 # decreases (strawberry, angora, axolotl, sea cucumber)
@@ -877,20 +906,51 @@ def main():
                                         traits[trait] = min(traits[trait] * 1.4, 0.99)
                                     elif trait in subtractTraits:
                                         traits[trait] = max(traits[trait] * 0.6, 0.0)
+                                data.donuts -= 1
 
-                            # update pet with new traits
-                            newPet = Pet(allPets.currentPet.name, allPets.currentPet.ID, traits)
-                            editPet('pets.txt', newPet)
-                            allPets.petlist = getPets('pets.txt')
-                            allPets.currentPet = newPet
+                        # update pet with new traits
+                        newPet = Pet(allPets.currentPet.name, allPets.currentPet.ID, traits)
+                        editPet('pets.txt', newPet)
+                        allPets.petlist = getPets('pets.txt')
+                        allPets.currentPet = newPet
 
-                            # update pet's sliders
-                            newPetSliders = ""
-                            for trait in traits:
-                                fauxSlider = "__sliderID__" + str(trait) + ":" +  str((traits[trait] * 100))
-                                newPetSliders += fauxSlider
-                            editSlider('petSliders.txt', newPetSliders, allPets.currentPet.ID)
-                            allPets.sliderCache = getSliders('petSliders.txt')
+                        # update pet's sliders
+                        newPetSliders = ""
+                        for trait in traits:
+                            fauxSlider = "__sliderID__" + str(trait) + ":" +  str((traits[trait] * 100))
+                            newPetSliders += fauxSlider
+                        editSlider('petSliders.txt', newPetSliders, allPets.currentPet.ID)
+                        allPets.sliderCache = getSliders('petSliders.txt')
+
+                        # update food message
+                        data.foodMessage[1] = data.cakes
+                        if data.cakes == 1:
+                            data.foodMessage[2] == " cake, "
+                        else:
+                            data.foodMessage[2] == " cakes, "
+
+                        data.foodMessage[3] = data.bobas
+                        if data.bobas == 1:
+                            data.foodMessage[4] == " boba, and "
+                        else:
+                            data.foodMessage[4] == " bobas, and "
+
+                        data.foodMessage[5] = data.donuts
+                        if data.donuts == 1:
+                            data.foodMessage[6] == " donut, and "
+                        else:
+                            data.foodMessage[6] == " donuts, and "
+                        foodTextBox2.text = data.foodMessage
+
+
+                    for food in foods:
+                        if food.mouseClick():
+                            food.active = True
+
+                elif event.type == MOUSEBUTTONUP:
+                    for food in foods:
+                        if food.mouseClick():
+                            food.active = False
 
             # 6. EDIT PET SCREEN
             elif data.mode == 6:
@@ -972,8 +1032,12 @@ def main():
 
 
         # draw backgrounds
-        if data.mode == 3:
+        if data.mode == -1:
+            data.screenSurf.blit(titleBG, (0, 0))
+        elif data.mode == 3:
             data.screenSurf.blit(mapBG, (data.bgX, 0))
+        elif data.mode == 5:
+            data.screenSurf.blit(cafeBG, (data.bgX, 0))
         else:
             data.screenSurf.blit(defaultBG, (data.bgX, 0))
 
@@ -1006,7 +1070,8 @@ def main():
             elif (pet == allPets.currentPet) and (data.mode != 1) and (data.mode != 6):
                 pet.draw()
         for food in foods:
-            food.draw()
+            if data.mode == 5:
+                food.draw()
 
         pygame.display.flip()
     pygame.quit()
@@ -1024,4 +1089,6 @@ if __name__ == '__main__':
 
 # Images:
 # Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
+# Cloud Background: https://www.princeton.edu/news/2018/01/10/spotty-coverage-climate-models-underestimate-cooling-effect-daily-cloud-cycle
+# Café Background: https://www.clozette.co.id/community/browse/instagram-cd-1633163238752817933/KARTIKARYANI
 # Pet images collected from GANbreeder: ganbreeder.app

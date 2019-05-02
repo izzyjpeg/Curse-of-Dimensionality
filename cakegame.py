@@ -79,7 +79,7 @@ data = Data()
 # player class
 class Player(object):
     def __init__(self, image):
-        self.speed = [50, 50]
+        self.speed = [35, 35]
         self.image = image
         self.flipped = False
         self.flippedImage = pygame.transform.flip(self.image, 1, 0)
@@ -117,13 +117,39 @@ class Player(object):
 class Dessert(object):
     def __init__(self):
         self.image = data.dessertImages[0]
-        self.rect = self.image.get_rect(bottomright = (0,0))
-        self.speed = [random.randint(5, 20), random.randint(2,5)]
+        self.rect = self.image.get_rect(center = (random.randint(0, data.screenRect.width), 0))
+        self.speed = [random.randint(2, 6), 1]
         self.hits = 0
         self.hitPlayer = False
         
     def update(self):
-        # check if pastries have gone offscreen, bounce and return to rect
+        # check if desserts have gone offscreen, wrap and return to rect
+        # regular and splitting desserts wrap
+        if not data.screenRect.contains(self.rect):
+            if (self.rect.left > data.screenRect.right):
+                self.rect.right = data.screenRect.left
+            elif (self.rect.right < 0):
+                self.rect.left = data.screenRect.right
+            if (self.rect.top > data.screenRect.bottom):
+                self.rect.bottom = data.screenRect.top
+            elif (self.rect.bottom < 0):
+                self.rect.top = data.screenRect.bottom
+        self.rect.move_ip(self.speed[0], self.speed[1])
+    
+    def draw(self):
+        data.screenSurf.blit(self.image, self.rect.topleft)
+
+# shrinking obstacle: boba
+class Boba(Dessert):
+    def __init__(self):
+        super().__init__()
+        self.image = data.dessertImages[1]
+        self.rect = self.image.get_rect(bottomright = (0, 0))
+        self.coefficient = 0.7
+    
+    def update(self):
+        # check if desserts have gone offscreen, bounce and return to rect
+        # shrinking desserts bounce
         if not data.screenRect.contains(self.rect):
             if (self.rect.right > data.screenRect.right) or (self.rect.left < 0):
                 self.speed[0] *= (-1)
@@ -138,17 +164,6 @@ class Dessert(object):
                 elif self.rect.top < 0:
                     self.rect.top = 0
         self.rect.move_ip(self.speed[0], self.speed[1])
-    
-    def draw(self):
-        data.screenSurf.blit(self.image, self.rect.topleft)
-
-# shrinking obstacle: boba
-class Boba(Dessert):
-    def __init__(self):
-        super().__init__()
-        self.image = data.dessertImages[1]
-        self.rect = self.image.get_rect(bottomright = (0, 0))
-        self.coefficient = 0.7
         
     def shrink(self):
         self.newWidth = int(self.image.get_width() * self.coefficient)
@@ -172,7 +187,7 @@ class Fork(object):
     def __init__(self, pos):
         self.image = data.forkImage
         self.rect = self.image.get_rect(midbottom = pos)
-        self.speed = [0, -40]
+        self.speed = [0, -10]
         self.hit = False
 
     def update(self):
@@ -426,10 +441,11 @@ def main(petImg):
                     
             # mouse click for the buttons
             elif event.type == MOUSEBUTTONDOWN and backButton.mouseClick():
-                    data.gameOver = True
-                    data.showGameOver = True
+                    #data.gameOver = True
+                    #data.showGameOver = True
+                    return (0, 0, 0)
                 
-            elif event.type == MOUSEBUTTONDOWN and backToGameButton.mouseClick() and (not data.showGameOver):
+            elif event.type == MOUSEBUTTONDOWN and (backToGameButton.mouseClick() and (not data.showGameOver)):
                 return (data.values["dessertScore"], \
                         data.values["bobaScore"], data.values["donutScore"])
                     
