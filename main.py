@@ -50,7 +50,8 @@ class Data(object):
 
         # bg image info
         self.bgWidth = 1074
-        self.bgX = (self.bgWidth - self.screenRect.width) * (-1)
+        #self.bgX = (self.bgWidth - self.screenRect.width) * (-1)
+        self.bgX = 0
 
         # title and button info
         self.titles = {"choose pet" : "Which pet will you choose?", \
@@ -448,7 +449,7 @@ class Pet(object):
 
             self.x = (data.width//2 - xOffset + (self.smWidth * (self.ID % 4))
                         + (self.margin[0] * (self.ID % 4)))
-            self.y = (data.height//2 - yOffset + self.margin[1]
+            self.y = (data.height//1.7 - yOffset + self.margin[1]
                         + (self.ID // 4) * (self.medHeight))
 
             self.pos = (self.x, self.y)
@@ -610,19 +611,17 @@ def main():
     pygame.init()
 
     # load BG images
-    loadingBG = pygame.transform.smoothscale(load_image('loadingBG.png'), (1074, data.screenRect.height))
-    defaultBG = pygame.transform.smoothscale(load_image('background.jpg'), (1074, data.screenRect.height))
-    mapBG = pygame.transform.smoothscale(load_image('mapBG.jpg'), (1074, data.screenRect.height))
-    cafeBG = pygame.transform.smoothscale(load_image('cafeBG.png'), (1074, data.screenRect.height))
     titleBG = load_image('titleBG.png')
+    mode0BG = pygame.transform.smoothscale(load_image('mode0BG.png'), (1000, data.screenRect.height))
+    mode1BG = pygame.transform.smoothscale(load_image('mode1BG.png'), (1000, data.screenRect.height))
+    mode2BG = pygame.transform.smoothscale(load_image('mode2BG.png'), (1000, data.screenRect.height))
+    mode3BG = pygame.transform.smoothscale(load_image('mode3BG.png'), (1000, data.screenRect.height))
+    mode5BG = pygame.transform.smoothscale(load_image('mode5BG.png'), (1000, data.screenRect.height))
+    mode6BG = pygame.transform.smoothscale(load_image('mode6BG.png'), (1000, data.screenRect.height))
 
     # make the game window fancy!
     pygame.display.set_icon(data.petIcon)
     pygame.display.set_caption('Curse of Dimensionality: A Virtual Pet Game for Sad GANbreeders')
-
-    # LOADING SCREEN
-    data.screenSurf.blit(loadingBG, (data.bgX, 0))
-    pygame.display.flip()
 
     # create clock to keep track of time
     clock = pygame.time.Clock()
@@ -644,12 +643,12 @@ def main():
         playGameButton = Button(data.buttons["play game"], (data.rightX - 70, data.lowerY - 40), "bottomright", -1)
 
         # mode 0: choose pet
-        choosePetTitle = Message(data.titles["choose pet"], (data.centerX, data.upperY), "midtop", 0)
+        #choosePetTitle = Message(data.titles["choose pet"], (data.centerX, data.upperY), "midtop", 0)
         noPetsYet = Message(data.buttons["no pets yet"], (data.centerX, data.upperY + 100), "center", 0, False)
         createPetButton = Button(data.buttons["create pet"], (data.centerX, data.lowerY), "midbottom", 0)
 
         # mode 1: create pet
-        createPetTitle = Message(data.titles["create pet"], (data.centerX, data.upperY), "midtop", 1)
+        #createPetTitle = Message(data.titles["create pet"], (data.centerX, data.upperY), "midtop", 1)
         nameTextBox = TextBox(data.textboxes["name"], "", (data.leftX, data.midUpperY - 20), "bottomleft", 1)
         getPetButton = Button(data.buttons["get pet"], (data.centerX, data.lowerY), "midbottom", 1)
         for i in range(len(data.categories)):
@@ -657,7 +656,7 @@ def main():
             sliders += [slider]
 
         # mode 6: edit pet
-        editPetTitle = Message(data.titles["edit pet"], (data.centerX, data.upperY), "midtop", 6)
+        #editPetTitle = Message(data.titles["edit pet"], (data.centerX, data.upperY), "midtop", 6)
         changeNameTextBox = TextBox(data.textboxes["name"], "", (data.leftX, data.midUpperY - 20), "bottomleft", 6)
         updatePetButton = Button(data.buttons["update pet"], (data.centerX, data.lowerY), "midbottom", 6)
         for i in range(len(data.categories)):
@@ -665,26 +664,25 @@ def main():
             editSliders += [slider]
 
         # mode 2: show pet
-        showPetTitle = Message(data.titles["show pet"], (data.centerX, data.upperY), "midtop", 2)
+        #showPetTitle = Message(data.titles["show pet"], (data.centerX, data.upperY), "midtop", 2)
         goToMapButton = Button(data.buttons["go to map"], (data.centerX + 100, data.lowerY), "bottomleft", 2)
         editPetButton = Button(data.buttons["edit pet"], (data.centerX - 100, data.lowerY), "bottomright", 2)
 
         # mode 3: map
-        mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
+        #mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
         cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX + 250, data.lowerY - 400), "center", 3)
         feedPetIcon = Icon(data.buttons["map"][1], (data.centerX, data.lowerY - 100), "center", 3)
         foodTextBox = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.centerY), "topleft", 3)
 
         # mode 5: feed pet
-        feedPetTitle = Message(data.titles["feed pet"], (data.centerX, data.upperY), "midtop", 5)
+        #feedPetTitle = Message(data.titles["feed pet"], (data.centerX, data.upperY), "midtop", 5)
         foodTextBox2 = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.upperY + 100), "topleft", 5)
         feedCakeButton = Button(data.buttons["feed cake"], (data.centerX - 200, data.lowerY), "bottomright", 5)
         feedBobaButton = Button(data.buttons["feed boba"], (data.centerX, data.lowerY), "midbottom", 5)
         feedDonutButton = Button(data.buttons["feed donut"], (data.centerX + 200, data.lowerY), "bottomleft", 5)
         notEnoughFoods = Message(data.titles["not enough foods"], (data.centerX, data.lowerY - 50), "midbottom", 5, False)
 
-        messages += [choosePetTitle, createPetTitle, showPetTitle, mapTitle, \
-                     noPetsYet, editPetTitle, feedPetTitle, notEnoughFoods]
+        messages += [noPetsYet, notEnoughFoods]
         buttons += [createPetButton, getPetButton, goToMapButton, nameTextBox, \
                     foodTextBox, editPetButton, updatePetButton, \
                     changeNameTextBox, feedCakeButton, feedBobaButton, \
@@ -1034,12 +1032,18 @@ def main():
         # draw backgrounds
         if data.mode == -1:
             data.screenSurf.blit(titleBG, (0, 0))
+        elif data.mode == 0:
+            data.screenSurf.blit(mode0BG, (data.bgX, 0))
+        elif data.mode == 1:
+            data.screenSurf.blit(mode1BG, (data.bgX, 0))
+        elif data.mode == 2:
+            data.screenSurf.blit(mode2BG, (data.bgX, 0))
         elif data.mode == 3:
-            data.screenSurf.blit(mapBG, (data.bgX, 0))
+            data.screenSurf.blit(mode3BG, (data.bgX, 0))
         elif data.mode == 5:
-            data.screenSurf.blit(cafeBG, (data.bgX, 0))
-        else:
-            data.screenSurf.blit(defaultBG, (data.bgX, 0))
+            data.screenSurf.blit(mode5BG, (data.bgX, 0))
+        elif data.mode == 6:
+            data.screenSurf.blit(mode6BG, (data.bgX, 0))
 
         # draw all objects
         for button in buttons:
