@@ -1,3 +1,5 @@
+# This file shows how I spaced out the features.
+
 ### Functions to Space Out the Features
 # This data had too many clusters, so I spread them out.
 from speciesDict import speciesDict

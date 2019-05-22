@@ -1,3 +1,6 @@
+# This is the file that calculates pet rarity.
+
+
 # Monte Carlo process template came from the 112 website.
 # https://www.cs.cmu.edu/~112/notes/notes-monte-carlo.html
 import random, math

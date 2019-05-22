@@ -1,3 +1,5 @@
+# This is the dictionary of known pets pre-spacing. It's used to calculate rarity.
+
 speciesDict = { "sp0" : {0 : 0.0, 1 : 0.4168, 2 : 0.0, 3 : 0.0, 4 : 0.0, 5 : 0.0, \
         6 : 0.0, 7 : 0.3627, 8 : 0.0, 9 : 0.0, 10 : 0.0, 11 : 0.2204, 12 : 0.0}, \
             "sp1" : {0 : 0.0, 1 : 0.0, 2 : 0.0, 3 : 0.0, 4 : 0.0, 5 : 0.0, 6 : 0.0, \

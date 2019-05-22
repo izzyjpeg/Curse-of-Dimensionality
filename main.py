@@ -1,4 +1,11 @@
+### This is the main game code.
+
+
 ### Please see the bottom Bibliography section for code and image citations!
+# Pygame can be found at https://www.pygame.org/docs/.
+# I did not use the 112 pygame framework. The structure of the game loop came
+# from pygame example code: Aliens.py (if you have pygame installed, this can
+# be found in the pygame files.)
 
 # import everything
 import os, pygame, random, time, sys
@@ -8,6 +15,7 @@ import createPet, cakegame, simulateRarity
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 # helper functions to read and write files
+# from 112 course website: https://www.cs.cmu.edu/~112/notes/notes-strings.html
 def readFile(path):
     with open(path, "rt") as f:
         return f.read()
@@ -16,6 +24,8 @@ def writeFile(path, contents):
         f.write(contents)
 
 # helper functions to load images
+# from pygame example code: Aliens.py (if you have pygame installed, this can
+# be found in the pygame files)
 def load_image(name):
     path = os.path.join(main_dir, 'images', name)
     return pygame.image.load(path).convert_alpha()
@@ -45,7 +55,7 @@ class Data(object):
         self.foodStartPos = (self.leftX + 110, self.lowerY - 80)
 
         # 0: choosePet, 1: createPet, 2: showPet, 3: map, 4: cakegame,
-        # 5: feed, # 6: edit
+        # 5: feed, # 6: edit, # 7 and 8: about game
         self.mode = -1
 
         # bg image info
@@ -62,12 +72,13 @@ class Data(object):
                        "not enough foods" : "You don't have any of those!"}
         self.buttons = {"create pet" : "Create a new pet!", \
                         "get pet" : "See your new pet!", "go to map": "To the map!", \
-                        "map" : ["Cake Game", "Feed Pet"], \
+                        "map" : ["Cake Game", "Feed Pet", "About Game"], \
                         "back" : "Back", "no pets yet" : "No pets yet :(", \
                         "edit pet" : "Edit Pet", "update pet" : "Update Pet", \
                         "feed cake" : "Give pet cake!", "feed boba" : "Give pet boba!", \
                         "feed donut" : "Give pet a donut!", \
-                        "play game" : "  Play Game  "
+                        "play game" : "  Play Game  ", \
+                        "next" : "Next"
                         }
         self.textboxes = {"name" : "Click and type to name pet!", \
                           "food" : "Snack Inventory"}
@@ -97,8 +108,9 @@ class Data(object):
         self.petImages = {}
         for i in range(52):
             self.petImages[i] = 'img' + str(i) + '.jpeg'
-        self.iconImages = {"Cake Game" : 'cake.png', \
-                           "Feed Pet" : 'feedpeticon.png'}
+        self.iconImages = {"Cake Game" : load_image('cake.png'), \
+                           "Feed Pet" : pygame.transform.smoothscale(load_image('feedpeticon.png'), (140, 200)), \
+                           "About Game" : pygame.transform.smoothscale(load_image('Voronoi.png'), (150, 150))}
         self.petIcon = pygame.transform.scale(load_image(self.petImages[0]), (32, 32))
         self.foodImages = [pygame.transform.smoothscale(load_image('cake.png'), (150, 150)), \
                            pygame.transform.smoothscale(load_image('boba.png'), (77, 160)), \
@@ -159,7 +171,9 @@ def roundedRect(surface,rect,color,radius=0.4):
 
 ### UI ELEMENTS ###
 
-# message class: derived from button class, see 'code cited' section
+# message class: derived from button class
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Message(object):
     def __init__(self, msg, location, orientation, mode, alwaysShown=True, bg=data.white, fg=data.black):
         self.color = data.white
@@ -209,7 +223,8 @@ class Message(object):
         self.surface.blit(self.msgSurf, self.msgPos)
         data.screenSurf.blit(self.surface, self.roundRect)
 
-# button class,  see 'code cited' section
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Button(Message):
     def __init__(self, msg, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
@@ -229,20 +244,18 @@ class Button(Message):
             return False
 
 # icon class : like a button but with an image
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Icon(Button):
     def __init__(self, msg, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
-        self.image = load_image(data.iconImages[self.msg])
-        self.image = pygame.transform.scale(self.image, (200, 200))
+        self.image = data.iconImages[self.msg]
 
     def draw(self):
         super().draw()
         self.imagePos = self.rect.midtop
         self.imageRect = (self.image.get_rect(midbottom = self.imagePos))
         data.screenSurf.blit(self.image, (self.imageRect.x, self.imageRect.y))
-
-        #debugging frames
-        #pygame.draw.rect(data.screenSurf, data.pink, self.rect, 2)
 
     def mouseClick(self):
         mousePos = pygame.mouse.get_pos()
@@ -253,7 +266,8 @@ class Icon(Button):
         else:
             return False
 
-# text box class: updates based on user or game state. see 'code cited' section
+# text box class was heavily based off of
+# https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
 class TextBox(Button):
     def __init__(self, msg, text, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
@@ -295,9 +309,8 @@ class TextBox(Button):
         data.screenSurf.blit(self.descSurf, (self.rect.x, self.rect.y - 20))
         data.screenSurf.blit(self.textSurf, (self.textX, self.textY))
 
-
-
-# slider class: see 'code cited' section
+# slider class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Slider(object):
     def __init__(self, ID, name, val, max, min, pos, mode):
         self.val = val
@@ -462,7 +475,7 @@ class Pet(object):
             data.screenSurf.blit(self.image, self.pos)
 
         elif data.mode == 3:
-            self.pos = (data.leftX, data.lowerY - self.smHeight)
+            self.pos = (data.leftX, data.lowerY - self.smHeight - 70)
             self.rect = self.smImage.get_rect(topleft = self.pos)
             data.screenSurf.blit(self.smImage, self.pos)
 
@@ -606,11 +619,15 @@ class AllPets(object):
         self.sliderCache = getSliders("petSliders.txt")
 allPets = AllPets()
 
-# main game function
+###  Main Game Function
 def main():
     pygame.init()
 
     # load BG images
+    # Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
+    # Cloud Background: https://www.princeton.edu/news/2018/01/10/spotty-coverage-climate-models-underestimate-cooling-effect-daily-cloud-cycle
+    # Café Background: https://www.clozette.co.id/community/browse/instagram-cd-1633163238752817933/KARTIKARYANI
+    # Other backgrounds are my own photography.
     titleBG = load_image('titleBG.png')
     mode0BG = pygame.transform.smoothscale(load_image('mode0BG.png'), (1000, data.screenRect.height))
     mode1BG = pygame.transform.smoothscale(load_image('mode1BG.png'), (1000, data.screenRect.height))
@@ -618,6 +635,8 @@ def main():
     mode3BG = pygame.transform.smoothscale(load_image('mode3BG.png'), (1000, data.screenRect.height))
     mode5BG = pygame.transform.smoothscale(load_image('mode5BG.png'), (1000, data.screenRect.height))
     mode6BG = pygame.transform.smoothscale(load_image('mode6BG.png'), (1000, data.screenRect.height))
+    mode7BG = pygame.transform.smoothscale(load_image('mode7BG.png'), (1000, data.screenRect.height))
+    mode8BG = pygame.transform.smoothscale(load_image('mode8BG.png'), (1000, data.screenRect.height))
 
     # make the game window fancy!
     pygame.display.set_icon(data.petIcon)
@@ -634,7 +653,7 @@ def main():
     if pygame.font:
 
         # all back buttons
-        for i in range(1, 7):
+        for i in range(1, 9):
             backButton = Button(data.buttons["back"], (data.leftX, data.upperY), "topleft", i)
             buttons += [backButton]
             backButtons += [backButton]
@@ -644,7 +663,7 @@ def main():
 
         # mode 0: choose pet
         #choosePetTitle = Message(data.titles["choose pet"], (data.centerX, data.upperY), "midtop", 0)
-        noPetsYet = Message(data.buttons["no pets yet"], (data.centerX, data.upperY + 100), "center", 0, False)
+        noPetsYet = Message(data.buttons["no pets yet"], (data.centerX, data.upperY + 120), "center", 0, False)
         createPetButton = Button(data.buttons["create pet"], (data.centerX, data.lowerY), "midbottom", 0)
 
         # mode 1: create pet
@@ -670,9 +689,10 @@ def main():
 
         # mode 3: map
         #mapTitle = Message(data.titles["map"], (data.centerX, data.upperY), "midtop", 3)
-        cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX + 250, data.lowerY - 400), "center", 3)
-        feedPetIcon = Icon(data.buttons["map"][1], (data.centerX, data.lowerY - 100), "center", 3)
-        foodTextBox = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.centerY), "topleft", 3)
+        cakeGameIcon = Icon(data.buttons["map"][0], (data.centerX - 260, data.lowerY - 420), "center", 3)
+        feedPetIcon = Icon(data.buttons["map"][1], (data.centerX + 250, data.lowerY - 130), "center", 3)
+        aboutGameIcon = Icon(data.buttons["map"][2], (data.rightX - 200, data.upperY + 200), "center", 3)
+        foodTextBox = TextBox(data.textboxes["food"], data.noFoodMessage, (data.leftX, data.lowerY), "bottomleft", 3)
 
         # mode 5: feed pet
         #feedPetTitle = Message(data.titles["feed pet"], (data.centerX, data.upperY), "midtop", 5)
@@ -682,18 +702,24 @@ def main():
         feedDonutButton = Button(data.buttons["feed donut"], (data.centerX + 200, data.lowerY), "bottomleft", 5)
         notEnoughFoods = Message(data.titles["not enough foods"], (data.centerX, data.lowerY - 50), "midbottom", 5, False)
 
+        # mode 7: about game
+        nextButton = Button(data.buttons["next"], (data.centerX, data.lowerY - 100), "center", 7)
+
+
         messages += [noPetsYet, notEnoughFoods]
         buttons += [createPetButton, getPetButton, goToMapButton, nameTextBox, \
                     foodTextBox, editPetButton, updatePetButton, \
                     changeNameTextBox, feedCakeButton, feedBobaButton, \
-                    feedDonutButton, foodTextBox2]
-        icons += [cakeGameIcon, feedPetIcon]
+                    feedDonutButton, foodTextBox2, nextButton]
+        icons += [cakeGameIcon, feedPetIcon, aboutGameIcon]
         for slider in sliders:
             slider.draw()
         for slider in editSliders:
             slider.draw()
 
 ### Game Loop ###
+# The structure of the game loop came from pygame example code: Aliens.py
+# (if you have pygame installed, this can be found in the pygame files.)
 
     going = True
     while going:
@@ -706,12 +732,14 @@ def main():
             # ALL BACK BUTTONS
             for backButton in backButtons:
                 if event.type == MOUSEBUTTONDOWN and backButton.mouseClick():
-                    if data.mode <= 2:
+                    if (data.mode == 1) or (data.mode == 2) or (data.mode == 6):
                         data.mode = 0
-                    elif data.mode == 5:
-                        data.mode = 3
-                    else:
+                    elif data.mode == 3:
                         data.mode = 2
+                    elif (data.mode == 5) or (data.mode == 7):
+                        data.mode = 3
+                    elif (data.mode == 8):
+                        data.mode = 7
 
             # INTRO SCREEN
             if data.mode == -1:
@@ -838,6 +866,8 @@ def main():
                     elif feedPetIcon.mouseClick():
                         foodTextBox2.text = data.foodMessage
                         data.mode = 5
+                    elif aboutGameIcon.mouseClick():
+                        data.mode = 7
 
             # 5. FEED PET SCREEN
             elif data.mode == 5:
@@ -1010,6 +1040,12 @@ def main():
                     for slider in editSliders:
                         slider.hit = False
 
+            # 7. ABOUT GAME SCREEN
+            elif data.mode == 7:
+                if event.type == MOUSEBUTTONDOWN:
+                    if nextButton.mouseClick():
+                        data.mode = 8
+
         # update all objects
         for slider in sliders:
             if slider.hit:
@@ -1044,6 +1080,10 @@ def main():
             data.screenSurf.blit(mode5BG, (data.bgX, 0))
         elif data.mode == 6:
             data.screenSurf.blit(mode6BG, (data.bgX, 0))
+        elif data.mode == 7:
+            data.screenSurf.blit(mode7BG, (data.bgX, 0))
+        elif data.mode == 8:
+            data.screenSurf.blit(mode8BG, (data.bgX, 0))
 
         # draw all objects
         for button in buttons:
@@ -1085,11 +1125,19 @@ if __name__ == '__main__':
     main()
 
 ### Bibliography ###
+
+# General Pygame: https://www.pygame.org/docs/
+# I did not use the 112 pygame framework. The structure of the game loop came
+# from pygame example code: Aliens.py (if you have pygame installed, this can
+# be found in the pygame files.)
+
 # Code cited/taken from other sources:
 # Textboxes: https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
 # Buttons and sliders: https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 # Rounded Rectangles: https://www.pygame.org/project-AAfilledRoundedRect-2349-.html
-# General Pygame: https://www.pygame.org/docs/
+# Read/Write file helper functions from 112 course website: https://www.cs.cmu.edu/~112/notes/notes-strings.html
+# Load image helper functions from pygame example code: Asteroids.py (if you have pygame installed, this can
+#                                                                     be found in the pygame files)
 
 # Images:
 # Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com

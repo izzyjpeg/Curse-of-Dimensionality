@@ -1,3 +1,5 @@
+###  This is the algorithm to choose a pet.
+
 import math
 ### switch these two to go back to cluster-y data
 #from speciesDict import speciesDict

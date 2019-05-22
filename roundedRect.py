@@ -1,3 +1,5 @@
+# This file isn't being used, it ended up as a function in the other files.
+
 ### THIS CODE DRAWS A ROUNDED RECTANGLE AND WAS TAKEN FROM THE FOLLOWING SOURCE:
 # code by josmiley on https://www.pygame.org/project-AAfilledRoundedRect-2349-.html
 import pygame

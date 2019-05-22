@@ -1,3 +1,11 @@
+###  This is for the cake minigame.
+
+### Please see Bibliography in main.py for more citations.
+# Pygame can be found at https://www.pygame.org/docs/.
+# I did not use the 112 pygame framework. The structure of the game loop came
+# from pygame example code: Aliens.py (if you have pygame installed, this can
+# be found in the pygame files.)
+
 # import everything
 import os, pygame, random, time, sys, copy
 from pygame.locals import *
@@ -5,6 +13,8 @@ from pygame.locals import *
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 # helper functions to load images
+# from pygame example code: Asteroids (if you have pygame installed, this can
+# be found in the pygame files)
 def load_image(name):
     path = os.path.join(main_dir, 'images', name)
     return pygame.image.load(path).convert_alpha()
@@ -231,7 +241,9 @@ def roundedRect(surface,rect,color,radius=0.4):
     return rectangle
     
 ### UI ELEMENTS 
-# message class: derived from button class, see 'code cited' section
+# message class: derived from button class
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Message(object):
     def __init__(self, msg, location, orientation, mode, alwaysShown=True):
         self.color = data.white
@@ -272,7 +284,8 @@ class Message(object):
         self.surface.blit(self.msgSurf, self.msgPos)
         data.screenSurf.blit(self.surface, self.roundRect)
 
-# button class,  see 'code cited' section
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class Button(Message):
     def __init__(self, msg, location, orientation, mode, outline=False):
         super().__init__(msg, location, orientation, mode)
@@ -295,7 +308,8 @@ class Button(Message):
         else:
             return False
             
-# text box class: updates based on user or game state. see 'code cited' section
+# text box class was heavily based off of
+# https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
 class TextBox(Button):
     def __init__(self, msg, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
@@ -328,7 +342,9 @@ class TextBox(Button):
         data.screenSurf.blit(self.descSurf, (self.rect.x, self.rect.y - 30))
         data.screenSurf.blit(self.textSurf, (self.rect.x, self.rect.y))
 
-# draw game over screen
+# messagebox class: derived from message class which was derived from button class
+# button class was heavily based off of
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
 class MessageBox(Message):
     def __init__(self, msg, location, orientation, mode):
         super().__init__(msg, location, orientation, mode)
@@ -358,6 +374,8 @@ def main(petImg):
     pygame.init()
     
     # load images
+    # Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
+    # Cloud Background: https://www.princeton.edu/news/2018/01/10/spotty-coverage-climate-models-underestimate-cooling-effect-daily-cloud-cycle
     background = pygame.transform.smoothscale(load_image('background.jpg'), (data.bgWidth, data.screenRect.height))
     playerImg = pygame.transform.smoothscale(load_image(petImg), (120, 120))
 
@@ -397,7 +415,9 @@ def main(petImg):
     pygame.time.set_timer(USEREVENT, 3000)
     dessertTime = 0
     
-    ### Game Loop ###
+### Game Loop ###
+# The structure of the game loop came from pygame example code: Aliens.py
+# (if you have pygame installed, this can be found in the pygame files.)
     going = True
     while going:
         #clock.tick(400)
@@ -578,3 +598,24 @@ def main(petImg):
 
 if __name__ == '__main__':
     main()
+
+### Bibliography ###
+
+# General Pygame: https://www.pygame.org/docs/
+# I did not use the 112 pygame framework. The structure of the game loop came
+# from pygame example code: Aliens.py (if you have pygame installed, this can
+# be found in the pygame files.)
+
+# Code cited/taken from other sources:
+# Textboxes: https://stackoverflow.com/questions/46390231/how-to-create-a-text-input-box-with-pygame
+# Buttons and sliders: https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame
+# Rounded Rectangles: https://www.pygame.org/project-AAfilledRoundedRect-2349-.html
+# Read/Write file helper functions from 112 course website: https://www.cs.cmu.edu/~112/notes/notes-strings.html
+# Load image helper functions from pygame example code: Asteroids.py (if you have pygame installed, this can
+#                                                                     be found in the pygame files)
+
+# Images:
+# Backgrounds processed with DeepDreamGenerator: deepdreamgenerator.com
+# Cloud Background: https://www.princeton.edu/news/2018/01/10/spotty-coverage-climate-models-underestimate-cooling-effect-daily-cloud-cycle
+# Café Background: https://www.clozette.co.id/community/browse/instagram-cd-1633163238752817933/KARTIKARYANI
+# Pet images collected from GANbreeder: ganbreeder.app
