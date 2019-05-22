@@ -14,15 +14,20 @@ Curse of Dimensionality: A Virtual Pet Game for Sad Ganbreeders
 
 Description:
 
-A virtual pet game based on imagery from GANs (Generative Adversarial [Neural] Networks) and Joel Simon's GAN creation interface, GANbreeder. A pet's features are determined by adjusting sliders, which generate a point in 13-dimensional feature space that matches the user's preferences to the features of one of 50 GAN images.
+A virtual pet game based on imagery from GANs (Generative Adversarial [Neural] Networks),
+and Joel Simon's GAN creation interface, GANbreeder. A pet's features are determined by
+adjusting sliders, which generate a point in 13-dimensional feature space that matches
+the user's preferences to the features of one of 50 GAN images.
 
-Users can play an asteroids-inspired mini-game to earn food. Food can be given to the pet to enhance or subtract from the pet's features.
+Users can play an asteroids-inspired mini-game to earn food.
+Food can be given to the pet to enhance or subtract from the pet's features.
 
 Want to learn more about the process? Create a pet and select "About Game" from the map.
 
 -----
 
-How to run: Install Pygame. Open main.py and execute the script. Don't change the file structure! I'm a beginner and things will get messed up.
+How to run: Install Pygame. Open main.py and execute the script.
+Don't change the file structure! I'm a beginner and things will get messed up.
 
 -----
 
