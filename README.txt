@@ -22,9 +22,14 @@ Want to learn more about the process? Create a pet and select "About Game" from 
 
 -----
 
-How to run: Install Pygame. Open main.py and execute the script. Please do not change the file structure!
+How to run: Install Pygame. Open main.py and execute the script. Don't change the file structure! I'm a beginner and things will get messed up.
 
 -----
 
 Libraries: N/A
 Shortcuts: N/A
+
+-----
+
+Special thanks to Michael Taylor (my 112 professor), my TAs, and my dad.
+Please see the bottom of main.py and cakegame.py for citations.
